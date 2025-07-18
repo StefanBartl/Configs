@@ -13,5 +13,7 @@ require('config.wsl')(Config)
 
 Config.default_prog = { "pwsh.exe", "-NoLogo" }
 --Config.default_prog = { '/usr/bin/zsh', '-l' }
+Config.window_close_confirmation = "NeverPrompt"
+
 
 return Config
