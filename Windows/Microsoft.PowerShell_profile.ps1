@@ -1,5 +1,11 @@
 Invoke-Expression (&starship init powershell)
 
+function Invoke-Starship-PreCommand {
+  $cwd = Split-Path -Leaf $PWD.Path
+  $host.ui.RawUI.WindowTitle = "$cwd"
+}
+
+
 # -----------------------------------
 # Aliases as functions (to support arguments)
 # -----------------------------------
