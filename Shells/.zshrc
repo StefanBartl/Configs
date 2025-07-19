@@ -69,6 +69,17 @@ plugins=(git zsh-autosuggestions zsh-syntax-highlighting fzf-zsh-plugin colored-
 ## Laden von oh-my-zsh
 source $ZSH/oh-my-zsh.sh
 
+function set_win_title() {
+  echo -ne "\033]0; $(basename "$PWD")\007"
+}
+
+# For bash:
+#starship_precmd_user_func="set_win_title"
+
+# For zsh:
+precmd_functions+=(set_win_title)
+
+
 # tmux
 MY_TMUX_PATH="$MY_GITHUB_PATH/LinuxFiles/MyTmux"
 ## tmux config einbinden
