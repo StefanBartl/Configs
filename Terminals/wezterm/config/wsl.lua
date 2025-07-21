@@ -1,9 +1,10 @@
 ---@module 'config.wsl'
 ---@brief WSL domain configuration for WezTerm to enable launch targets via the launcher.
----@version 1.0
 
---@param Config WezTermConfig
---@return nil
+require("@types.types")
+
+---@param Config WezTermConfig
+---@return nil
 return function(Config)
   --- Define available WSL distributions to appear in the launcher.
   --- Each entry creates a selectable launch domain (e.g. "WSL:Ubuntu").

@@ -91,5 +91,22 @@ return function(Config)
       mods = "CTRL|ALT",
       action = wezterm.action.ActivatePaneDirection("Down"),
     },
+
+    {
+      key = "F5",
+      mods = "CTRL",
+      action = wezterm.action.EmitEvent("set-color-hackthebox"),
+   },
+   {
+      key = "L",
+      mods = "CTRL|SHIFT",
+      action = wezterm.action.ClearScrollback("ScrollbackAndViewport"),
+    },
+    {
+      key = 'R',
+      mods = 'CTRL',
+      action = wezterm.action.ShowDebugOverlay
+    },
+
   }
 end

@@ -1,7 +1,8 @@
 ---@module 'config.open_uri'
 ---@brief Custom URI handler for WezTerm to open files and folders on click.
----@version 1.0
 ---@see https://wezfurlong.org/wezterm/config/lua/event-handlers.html#weztermon
+
+require("@types.types")
 
 local wt = require 'wezterm'
 
@@ -21,10 +22,9 @@ local function is_shell(foreground_process_name)
 end
 
 --- Set up custom behavior for URI clicks (e.g. file://).
----@param Config table WezTerm config object (not used here but passed for uniform module signature)
 ---@return nil
-return function(Config)
-  wt.on('open-uri', function(window, pane, uri)
+return function(_)
+  wt.on('open-uri', function(_, pane, uri)
     local editor = 'nvim' -- set your default editor here
 
     -- only handle file:// URIs and avoid alternate screens (e.g. less, vim, man)

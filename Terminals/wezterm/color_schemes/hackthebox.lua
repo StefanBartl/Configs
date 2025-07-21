@@ -1,7 +1,6 @@
--- ~/.config/wezterm/colors/hackthebox.lua
+---@module 'color_schemes.HackTheBoxColorScheme'
 
----@class HackTheBoxColorScheme
----@field name string
+require("@types.types")
 
 ---@type HackTheBoxColorScheme
 return {

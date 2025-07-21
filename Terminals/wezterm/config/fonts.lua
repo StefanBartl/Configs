@@ -1,9 +1,10 @@
 ---@module 'config.fonts'
 ---@brief Font configuration for WezTerm using fallback and typographic ligatures
----@version 1.0
 
---@param Config WezTermConfig
---@return nil
+require("@types.types")
+
+---@param Config WezTermConfig
+---@return nil
 return function(Config)
   --- Base font size in points
   Config.font_size = 10
