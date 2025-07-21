@@ -1,10 +1,10 @@
+Set-Location 'E:\MyGithub'
 Invoke-Expression (&starship init powershell)
 
 function Invoke-Starship-PreCommand {
   $cwd = Split-Path -Leaf $PWD.Path
   $host.ui.RawUI.WindowTitle = "$cwd"
 }
-
 
 # -----------------------------------
 # Aliases as functions (to support arguments)
@@ -26,6 +26,14 @@ function rg {
 # Usage: delta [file]
 function delta {
   command delta --hyperlinks --hyperlinks-file-link-format="file://{path}#{line}" @args
+}
+
+function downloads {
+  Set-Location "C:\Users\bartl\Downloads"
+}
+
+function appdata {
+  Set-Location "C:\Users\bartl\AppData"
 }
 
 # Enable colored output in less pager (used by git, etc.)
