@@ -1,9 +1,10 @@
 ---@module 'config.features'
 ---@brief features configuration for WezTerm
----@version 1.0
 
---@param Config WezTermConfig
---@return nil
+require("@types.types")
+
+---@param Config WezTermConfig
+---@return nil
 return function(Config)
   Config.mouse_bindings = {
     {

@@ -10,6 +10,7 @@ return function(Config)
   require('config.fonts')(Config)
   require('config.keybindings')(Config)
   require('config.open_uri')(Config)
+  require('config.themes')(Config)
   require('config.wsl')(Config)
 
   Config.default_prog = { "pwsh.exe", "-NoLogo" }

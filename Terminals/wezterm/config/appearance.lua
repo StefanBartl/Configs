@@ -1,56 +1,9 @@
 ---@module 'config.appearance'
 ---@brief UI appearance settings, tab bar, padding, opacity, and theming
----@version 1.1
 
---@param Config WezTermConfig
---@return nil
+---@param Config WezTermConfig
+---@return nil
 return function(Config)
-  local wezterm = require("wezterm")
-
-  --- Load a custom theme (Neapsix's Rose Pine via plugin)
- -- local theme = wezterm.plugin.require('https://github.com/neapsix/wezterm').main
-  --Config.colors = theme.colors()
-  --Config.window_frame = theme.window_frame() -- required for fancy tab bar look
-
-  -- === Register custom color scheme ===
-
-  --- Dynamisch geladen: plattformunabhängig
-  --- Datei muss liegen unter: ~/.config/wezterm/color_schemes/hackthebox.lua (Linux)
-  --- oder z.B.: E:/MyGithub/Configs/Terminals/wezterm/color_schemes/hackthebox.lua (Windows)
-  --- ACHTUNG: Pfad trennt "/" auch unter Windows verwenden
-
-  ---@type HackTheBoxColorScheme
-  local hackthebox_theme = dofile("E:/MyGithub/Configs/Terminals/wezterm/color_schemes/hackthebox.lua")
-
-  -- Extrahiere Palette (ohne .name)
-  local palette = {}
-  for k, v in pairs(hackthebox_theme) do
-    if k ~= "name" then
-      palette[k] = v
-    end
-  end
-
-  --- Registriere Theme
-  Config.color_schemes = {
-    [hackthebox_theme.name] = palette,
-  }
-
-  --- Aktiviere Theme
-  Config.color_scheme = hackthebox_theme.name
-
-  --- Umschaltfunktion via WezTerm-Event (optional)
-  wezterm.on("set-color-hackthebox", function(window, pane)
-    window:set_config_overrides({
-      color_scheme = hackthebox_theme.name,
-    })
-  end)
-
-  -- Alternative (if you want to fallback to built-in theme)
-  -- Config.color_scheme = 'rose-pine'
-
-
-  -- ===  UI  ===
-
   --- Set window background transparency
   Config.window_background_opacity = 0.95
 
