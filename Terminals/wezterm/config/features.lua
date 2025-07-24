@@ -10,7 +10,7 @@ return function(Config)
     {
       event = { Up = { streak = 1, button = "Left" } },
       mods = "NONE",
-      action = require("wezterm").action { CopyTo = "ClipboardAndPrimarySelection" },
+      action = require("wezterm").action.CompleteSelection 'Clipboard',
     },
   }
 end
