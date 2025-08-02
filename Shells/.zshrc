@@ -21,6 +21,8 @@ export PATH                         # Die exportierte PATH-Variable bleibt beste
 export HISTCONTROL=ignoredups # Causes the shell's history recording feature to ignore a command if the same command was just recorded
 export HISTSIZE=1000 # Increases the size of the command history from the usual default of 500 lines to 1,000 lines.
 
+export XDG_CONFIG_HOME="$HOME/MyGithub/Configs" # glow md renderer erwartet diesen pfad für die config yaml
+
 # Created by `pipx` on 2025-03-11 01:24:31
 export PATH="$PATH:/home/steve/.local/bin"
 

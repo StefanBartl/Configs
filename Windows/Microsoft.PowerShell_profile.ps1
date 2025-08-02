@@ -171,5 +171,3 @@ function Elevate-Shell {
 function Elevate-StarshipShell {
   Start-Process -Verb RunAs -FilePath "powershell.exe" -ArgumentList "-NoExit", "-Command", "$PROFILE"
 }
-
-
