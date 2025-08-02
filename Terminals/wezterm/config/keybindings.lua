@@ -9,7 +9,30 @@ local wezterm = require("wezterm")
 return function(Config)
   --- Define custom keybindings
   Config.keys = {
-    -- Toggle between color schemes
+    {
+      key = "Enter",
+      mods = "ALT",
+      action = wezterm.action.DisableDefaultAssignment,
+    },
+
+    -- Scroll up 1 line
+    { key = "UpArrow", mods = "CTRL", action = wezterm.action.ScrollByLine(-1) },
+
+    -- Scroll down 1 line
+    { key = "DownArrow", mods = "CTRL", action = wezterm.action.ScrollByLine(1) },
+
+    -- Scroll up 1 page
+    { key = "PageUp", mods = "CTRL", action = wezterm.action.ScrollByPage(-1) },
+
+    -- Scroll down 1 page
+    { key = "PageDown", mods = "CTRL", action = wezterm.action.ScrollByPage(1) },
+
+    -- Scroll to top/bottom
+    { key = "Home", mods = "CTRL", action = wezterm.action.ScrollToTop },
+    { key = "End", mods = "CTRL", action = wezterm.action.ScrollToBottom },
+
+
+     -- Toggle between color schemes
     {
       key = "1",
       mods = "CTRL|ALT",
