@@ -8,16 +8,12 @@ require("@types.types")
 return function(Config)
   local wezterm = require("wezterm")
 
-  -- Neapsix's Rose Pine via plugin
-  --local theme = wezterm.plugin.require('https://github.com/neapsix/wezterm').main
-  --Config.colors = theme.colors()
-  --Config.window_frame = theme.window_frame() -- required for fancy tab bar look
-
-
-  -- Activate Hack the Box theme
+  -- Plattformunabhängiger Pfad
+  local home = os.getenv("USERPROFILE") or os.getenv("HOME")
+  local prefix = wezterm.target_triple:find("windows") and (home or "E:") or home
 
   ---@type HackTheBoxColorScheme
-  local hackthebox_theme = dofile("E:/MyGithub/Configs/Terminals/wezterm/color_schemes/hackthebox.lua")
+  local hackthebox_theme = dofile(prefix .. "/.config/wezterm/color_schemes/hackthebox.lua")
 
   local palette = {}
   for k, v in pairs(hackthebox_theme) do
@@ -37,7 +33,5 @@ return function(Config)
       color_scheme = hackthebox_theme.name,
     })
   end)
-
-  -- Alternative fallback to built-in theme
-  -- Config.color_scheme = 'rose-pine'
 end
+
