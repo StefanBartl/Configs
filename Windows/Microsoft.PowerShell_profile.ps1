@@ -1,5 +1,11 @@
 Set-Location 'E:\MyGithub'
+
+# Starship prompt
 Invoke-Expression (&starship init powershell)
+
+# zoxide directory jumper
+Invoke-Expression (& { (zoxide init powershell | Out-String) })
+
 
 function Invoke-Starship-PreCommand {
   $cwd = Split-Path -Leaf $PWD.Path
@@ -18,7 +24,7 @@ function ls {
 
 # ripgrep with hyperlink output for Kitty terminal
 # Usage: rg [pattern] [path?]
-function rg {
+function rgrep {
   command rg --hyperlink-format=kitty @args
 }
 
@@ -26,10 +32,6 @@ function rg {
 # Usage: delta [file]
 function delta {
   command delta --hyperlinks --hyperlinks-file-link-format="file://{path}#{line}" @args
-}
-
-function downloads {
-  Set-Location "C:\Users\bartl\Downloads"
 }
 
 function appdata {
@@ -171,3 +173,5 @@ function Elevate-Shell {
 function Elevate-StarshipShell {
   Start-Process -Verb RunAs -FilePath "powershell.exe" -ArgumentList "-NoExit", "-Command", "$PROFILE"
 }
+
+Import-Module MyCliHelpers

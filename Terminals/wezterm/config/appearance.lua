@@ -5,7 +5,7 @@
 ---@return nil
 return function(Config)
   --- Set window background transparency
-  Config.window_background_opacity = 0.95
+  Config.window_background_opacity = 0.75
 
   --- Window padding (in pixels)
   Config.window_padding = {
@@ -22,9 +22,9 @@ return function(Config)
 
   --- Tab bar configuration
   Config.enable_tab_bar = true
-  Config.use_fancy_tab_bar = true                           -- Fancy appearance with icons, etc.
+  Config.use_fancy_tab_bar = true             -- Fancy appearance with icons, etc.
   Config.tab_bar_at_bottom = true
-  Config.hide_tab_bar_if_only_one_tab = false               -- Always show tab bar
+  Config.hide_tab_bar_if_only_one_tab = false -- Always show tab bar
   Config.show_new_tab_button_in_tab_bar = true
   Config.show_tab_index_in_tab_bar = false
   Config.show_tabs_in_tab_bar = true

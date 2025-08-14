@@ -1,4 +1,4 @@
--- ~/.config/wezterm/wezterm.lua
+---@module 'wezterm'
 
 local wezterm = require("wezterm")
 
