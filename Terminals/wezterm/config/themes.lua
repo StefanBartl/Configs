@@ -13,7 +13,7 @@ return function(Config)
   local prefix = wezterm.target_triple:find("windows") and (home or "E:") or home
 
   ---@type HackTheBoxColorScheme
-  local hackthebox_theme = dofile(prefix .. "/.config/wezterm/color_schemes/hackthebox.lua")
+  local hackthebox_theme = dofile(prefix .. "/Config/wezterm/color_schemes/hackthebox.lua")
 
   local palette = {}
   for k, v in pairs(hackthebox_theme) do

@@ -5,7 +5,7 @@
 ---@return nil
 return function(Config)
   --- Set window background transparency
-  Config.window_background_opacity = 0.75
+  --Config.window_background_opacity = 0.75
 
   --- Window padding (in pixels)
   Config.window_padding = {
