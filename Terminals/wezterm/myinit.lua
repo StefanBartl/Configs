@@ -15,8 +15,6 @@ return function(Config)
   require('config.wsl')(Config)
   require('config.tabtitle')(Config)
 
-  Config.color_scheme = 'Homebrew'
-
   if is_windows then
     Config.default_prog = { 'pwsh.exe', '-NoLogo' }
   end

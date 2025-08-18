@@ -1,11 +1,10 @@
-Set-Location 'E:\MyGithub'
+#Set-Location 'E:\MyGithub'
 
 # Starship prompt
 Invoke-Expression (&starship init powershell)
 
 # zoxide directory jumper
 Invoke-Expression (& { (zoxide init powershell | Out-String) })
-
 
 function Invoke-Starship-PreCommand {
   $cwd = Split-Path -Leaf $PWD.Path

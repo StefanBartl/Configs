@@ -7,7 +7,7 @@ require("@types.types")
 ---@return nil
 return function(Config)
   --- Base font size in points
-  Config.font_size = 10
+  Config.font_size = 12
 
   --- Font fallback list with typographic options
   Config.font = require('wezterm').font_with_fallback {
