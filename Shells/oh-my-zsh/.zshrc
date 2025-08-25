@@ -4,6 +4,9 @@ export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$HOME/
 # Legen Sie den Pfad zu oh-my-zsh fest
 export ZSH="$HOME/.oh-my-zsh"
 
+export VISUAL="nvim"
+export EDITOR="$VISUAL"
+
 # Wählen Sie Ihr bevorzugtes Theme aus
 ZSH_THEME="amuse"
 
