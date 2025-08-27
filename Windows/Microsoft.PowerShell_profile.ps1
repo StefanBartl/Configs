@@ -1,4 +1,4 @@
-#Set-Location 'E:\MyGithub'
+#Set-Location 'E:\repos'
 
 # Starship prompt
 Invoke-Expression (&starship init powershell)
