@@ -5,30 +5,24 @@
 ---@return nil
 return function(Config)
   --- Set window background transparency
-  --Config.window_background_opacity = 0.75
+  Config.window_background_opacity = 0.5
 
-  --- Window padding (in pixels)
-  Config.window_padding = {
-    left = 2,
-    right = 2,
-    top = 2,
-    bottom = 1,
+  -- Add an explicit orange border around the window
+  -- Width units can be 'px', 'pt' or cell-relative strings like '0.5cell'.
+  Config.window_frame = {
+    -- Titlebar background/underline (used with the fancy tab bar or CSD)
+    --    active_titlebar_bg   = "#1e1e1e",
+    --    inactive_titlebar_bg            = "#1e1e1e",
+    --    active_titlebar_border_bottom   = "#ffa500",
+    --    inactive_titlebar_border_bottom = "#ffa500",
+
+    border_left_width    = "0.1cell",
+    border_right_width   = "0.1cell",
+    border_top_height    = "0.1cell",
+    border_bottom_height = "0.1cell",
+    border_left_color    = "#ffa500",
+    border_right_color   = "#ffa500",
+    border_top_color     = "#ffa500",
+    border_bottom_color  = "#ffa500",
   }
-
-  --- Native titlebar button layout
-  Config.integrated_title_button_alignment = "Right"
-  Config.integrated_title_button_style = "Windows"
-  Config.integrated_title_buttons = { "Hide", "Maximize", "Close" }
-
-  --- Tab bar configuration
-  Config.enable_tab_bar = true
-  Config.use_fancy_tab_bar = true             -- Fancy appearance with icons, etc.
-  Config.tab_bar_at_bottom = true
-  Config.hide_tab_bar_if_only_one_tab = false -- Always show tab bar
-  Config.show_new_tab_button_in_tab_bar = true
-  Config.show_tab_index_in_tab_bar = false
-  Config.show_tabs_in_tab_bar = true
-  Config.switch_to_last_active_tab_when_closing_tab = false -- Do not jump to last
-  Config.tab_and_split_indices_are_zero_based = false
-  Config.tab_max_width = 25
 end
