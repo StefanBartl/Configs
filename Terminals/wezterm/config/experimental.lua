@@ -53,45 +53,12 @@ return function(Config)
       tabline_c = {},
 
       tab_active = {
-        {
-          'process',
-          process_to_icon = {
-            ['air'] = { wezterm.nerdfonts.md_language_go },
-            ['bacon'] = { wezterm.nerdfonts.dev_rust },
-            ['bat'] = { wezterm.nerdfonts.md_bat },
-            ['btm'] = { wezterm.nerdfonts.md_chart_donut_variant },
-            ['btop'] = { wezterm.nerdfonts.md_chart_areaspline },
-            ['bun'] = { wezterm.nerdfonts.md_hamburger },
-            ['cargo'] = { wezterm.nerdfonts.dev_rust },
-            ['cmd.exe'] = { wezterm.nerdfonts.md_console_line },
-            ['curl'] = wezterm.nerdfonts.md_flattr,
-            ['debug'] = { wezterm.nerdfonts.cod_debug },
-            ['default'] = wezterm.nerdfonts.md_application,
-            ['docker'] = { wezterm.nerdfonts.md_docker },
-            ['docker-compose'] = { wezterm.nerdfonts.md_docker },
-            ['dpkg'] = { wezterm.nerdfonts.dev_debian },
-            ['fish'] = { wezterm.nerdfonts.md_fish },
-            ['git'] = { wezterm.nerdfonts.dev_git },
-            ['go'] = { wezterm.nerdfonts.md_language_go },
-            ['kubectl'] = { wezterm.nerdfonts.md_docker },
-            ['kuberlr'] = { wezterm.nerdfonts.md_docker },
-            ['lazygit'] = { wezterm.nerdfonts.cod_github },
-            ['lua'] = { wezterm.nerdfonts.seti_lua },
-            ['make'] = wezterm.nerdfonts.seti_makefile,
-            ['nix'] = { wezterm.nerdfonts.linux_nixos },
-            ['node'] = { wezterm.nerdfonts.md_nodejs },
-            ['npm'] = { wezterm.nerdfonts.md_npm },
-            ['nvim'] = { wezterm.nerdfonts.custom_neovim },
-            -- and more...
-          },
-          -- process_to_icon is a table that maps process to icons
-        },
       },
       tab_inactive = {
       },
       tabline_x = {},
       tabline_y = {},
-      tabline_z = { " lavalue" },
+      tabline_z = {},
     },
     extensions = {},
   })

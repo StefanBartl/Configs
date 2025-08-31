@@ -5,7 +5,7 @@
 ---@return nil
 return function(Config)
   --- Set window background transparency
-  Config.window_background_opacity = 0.5
+  Config.window_background_opacity = 0.9
 
   -- Add an explicit orange border around the window
   -- Width units can be 'px', 'pt' or cell-relative strings like '0.5cell'.
