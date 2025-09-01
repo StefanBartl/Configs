@@ -21,7 +21,7 @@ return function(Config)
 	tabline.setup({
 		options = {
 			icons_enabled = true,
-			theme = theme_source, -- can be string or Config.colors object
+			theme = "Tokyo Night",
 			tabs_enabled = true,
 			section_separators = {
 				left = wezterm.nerdfonts.pl_left_hard_divider,
