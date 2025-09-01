@@ -6,23 +6,30 @@
 return function(Config)
   --- Set window background transparency
   Config.window_background_opacity = 0.9
+  Config.tab_bar_at_bottom = true
+  Config.use_fancy_tab_bar = true
+  Config.hide_tab_bar_if_only_one_tab = false
+  Config.show_new_tab_button_in_tab_bar = false
+  Config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
+	Config.window_padding = { left = 9, right = 8, top = 8, bottom = 8 }
+
 
   -- Add an explicit orange border around the window
   -- Width units can be 'px', 'pt' or cell-relative strings like '0.5cell'.
-  Config.window_frame = {
-    -- Titlebar background/underline (used with the fancy tab bar or CSD)
-    --    active_titlebar_bg   = "#1e1e1e",
-    --    inactive_titlebar_bg            = "#1e1e1e",
-    --    active_titlebar_border_bottom   = "#ffa500",
-    --    inactive_titlebar_border_bottom = "#ffa500",
-
-    border_left_width    = "0.1cell",
-    border_right_width   = "0.1cell",
-    border_top_height    = "0.1cell",
-    border_bottom_height = "0.1cell",
-    border_left_color    = "#ffa500",
-    border_right_color   = "#ffa500",
-    border_top_color     = "#ffa500",
-    border_bottom_color  = "#ffa500",
-  }
+  -- Config.window_frame = {
+  --   -- Titlebar background/underline (used with the fancy tab bar or CSD)
+      -- active_titlebar_bg   = "#1e1e1e",
+      -- inactive_titlebar_bg            = "#1e1e1e",
+      -- active_titlebar_border_bottom   = "#ffa500",
+      -- inactive_titlebar_border_bottom = "#ffa500",
+  --
+  --   border_left_width    = "0.1cell",
+  --   border_right_width   = "0.1cell",
+  --   border_top_height    = "0.1cell",
+  --   border_bottom_height = "0.1cell",
+  --   border_left_color    = "#ffa500",
+  --   border_right_color   = "#ffa500",
+  --   border_top_color     = "#ffa500",
+  --   border_bottom_color  = "#ffa500",
+  -- }
 end

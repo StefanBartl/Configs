@@ -14,7 +14,7 @@ return function(Config)
   require('config.open_uri')(Config)
   require('config.wsl')(Config)
   require('config.tabtitle')(Config)
-  require('config.experimental')(Config)
+  -- require('config.experimental')(Config)
 
   if is_windows then
     Config.default_prog = { 'pwsh.exe', '-NoLogo' }
