@@ -35,40 +35,6 @@ return function(Config)
 			action = act.EmitEvent("spawn_sized_window"),
 		},
 
-		-- Optional: Gleiche Erfahrung für SUPER+N (macOS/Win oft genutzt)
-		{
-			key = "n",
-			mods = "SUPER",
-			action = act.EmitEvent("spawn_sized_window"),
-		},
-
-
-
-		-- Scroll up 1 line
-		{ key = "UpArrow",   mods = "CTRL", action = wezterm.action.ScrollByLine(-1) },
-
-		-- Scroll down 1 line
-		{ key = "DownArrow", mods = "CTRL", action = wezterm.action.ScrollByLine(1) },
-
-		-- Scroll up 1 page
-		{ key = "PageUp",    mods = "CTRL", action = wezterm.action.ScrollByPage(-1) },
-
-		-- Scroll down 1 page
-		{ key = "PageDown",  mods = "CTRL", action = wezterm.action.ScrollByPage(1) },
-
-		-- Scroll to top/bottom
-		{ key = "Home",      mods = "CTRL", action = wezterm.action.ScrollToTop },
-		{ key = "End",       mods = "CTRL", action = wezterm.action.ScrollToBottom },
-
-
-		-- Toggle between color schemes
-		{
-			key = "1",
-			mods = "CTRL|ALT",
-			action = wezterm.action.EmitEvent("set-color-hackthebox"),
-		},
-
-		-- STRG + SHIFT + Pfeil links → vorheriger Tab
 		{
 			key = "LeftArrow",
 			mods = "CTRL|SHIFT",
@@ -79,6 +45,12 @@ return function(Config)
 			key = "RightArrow",
 			mods = "CTRL|SHIFT",
 			action = wezterm.action.ActivateTabRelative(1),
+		},
+
+		{
+			key = "w",
+			mods = "CTRL|SHIFT|ALT",
+			action = wezterm.action.CloseCurrentPane { confirm = true },
 		},
 	}
 
