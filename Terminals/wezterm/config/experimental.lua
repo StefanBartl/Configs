@@ -5,67 +5,59 @@
 
 local wezterm = require("wezterm")
 
----@class WezTermConfig : table
----@field color_scheme string|nil
----@field colors table|nil
----@field tab_bar_at_bottom boolean
----@field use_fancy_tab_bar boolean
----@field hide_tab_bar_if_only_one_tab boolean
----@field show_new_tab_button_in_tab_bar boolean
----@field tab_max_width integer
-
----@param Config WezTermConfig
 ---@return nil
 return function(Config)
-  -- 1) Load plugin
-  local tabline = wezterm.plugin.require("https://github.com/michaelbrusegard/tabline.wez")
+	-- 1) Load plugin
+	local tabline = wezterm.plugin.require("https://github.com/michaelbrusegard/tabline.wez")
 
-  -- 2) Choose theme SOURCE for tabline:
-  --    Prefer an explicit colors object, else a configured scheme name,
-  --    else fall back to a safe builtin.
-  --    tabline.wez accepts either a string (scheme name) OR a WezTerm colors table.
-  local theme_source = Config.colors or Config.color_scheme or "Catppuccin Mocha"
+	-- 2) Choose theme SOURCE for tabline:
+	--    Prefer an explicit colors object, else a configured scheme name,
+	--    else fall back to a safe builtin.
+	--    tabline.wez accepts either a string (scheme name) OR a WezTerm colors table.
+	local theme_source = Config.colors or Config.color_scheme or "Catppuccin Mocha"
 
-  -- 3) Setup FIRST: initializes internal theme and component graph.
-  --    If Nerd Font glyphs are not desired/available, set separators to ''.
-  tabline.setup({
-    options = {
-      icons_enabled = true,
-      theme = "Catppuccin Mocha", -- can be string or Config.colors object
-      tabs_enabled = true,
-      section_separators = {
-        left = wezterm.nerdfonts.pl_left_hard_divider,
-        right = wezterm.nerdfonts.pl_right_hard_divider,
-      },
-      component_separators = {
-        left = wezterm.nerdfonts.pl_left_soft_divider,
-        right = wezterm.nerdfonts.pl_right_soft_divider,
-      },
-      tab_separators = {
-        left = wezterm.nerdfonts.pl_left_hard_divider,
-        right = wezterm.nerdfonts.pl_right_hard_divider,
-      },
-      theme_overrides = {}, -- optional overrides per mode/keytable
-    },
-    sections = {
-      tabline_a = { " WKD" },
-      tabline_b = {},
-      tabline_c = {},
+	-- 3) Setup FIRST: initializes internal theme and component graph.
+	--    If Nerd Font glyphs are not desired/available, set separators to ''.
+	tabline.setup({
+		options = {
+			icons_enabled = true,
+			theme = theme_source, -- can be string or Config.colors object
+			tabs_enabled = true,
+			section_separators = {
+				left = wezterm.nerdfonts.pl_left_hard_divider,
+				right = wezterm.nerdfonts.pl_right_hard_divider,
+			},
+			component_separators = {
+				left = wezterm.nerdfonts.pl_left_soft_divider,
+				right = wezterm.nerdfonts.pl_right_soft_divider,
+			},
+			tab_separators = {
+				left = wezterm.nerdfonts.pl_left_hard_divider,
+				right = wezterm.nerdfonts.pl_right_hard_divider,
+			},
+			theme_overrides = {}, -- optional overrides per mode/keytable
+		},
+		sections = {
+			tabline_a = { " WKD" },
+			tabline_b = {},
+			tabline_c = {},
 
-      tab_active = {
-      },
-      tab_inactive = {
-      },
-      tabline_x = {},
-      tabline_y = {},
-      tabline_z = {},
-    },
-    extensions = {},
-  })
+			tab_active = {
+			},
+			tab_inactive = {
+			},
+			tabline_x = {},
+			tabline_y = {},
+			tabline_z = {},
+		},
+		extensions = {},
+	})
 
-  tabline.apply_to_config(Config)
-  Config.tab_bar_at_bottom = true
-  Config.use_fancy_tab_bar = false
-  Config.hide_tab_bar_if_only_one_tab = false
-  Config.show_new_tab_button_in_tab_bar = false
+	tabline.apply_to_config(Config)
+	Config.tab_bar_at_bottom = true
+	Config.use_fancy_tab_bar = false
+	Config.hide_tab_bar_if_only_one_tab = false
+	Config.show_new_tab_button_in_tab_bar = false
+	Config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
+	Config.window_padding = { left = 9, right = 8, top = 8, bottom = 8 }
 end

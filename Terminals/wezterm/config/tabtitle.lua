@@ -161,6 +161,7 @@ wezterm.on("update-right-status", function(window, _)
 end)
 
 -- Render colored prefix + title + edge.
+---@diagnostic disable-next-line
 wezterm.on("format-tab-title", function(tab, tabs, panes, config, hover, max_width)
   local pane = tab.active_pane
   local env = detect_env(pane)
