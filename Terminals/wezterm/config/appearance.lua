@@ -5,7 +5,17 @@
 ---@return nil
 return function(Config)
 
-	Config.window_background_opacity = 0.7
+	-- Config.window_background_opacity = 0.7 -- nice!
+	Config.window_background_opacity = 0.85
+	-- Config.color_scheme = 'tokyonight'
+	-- Config.color_scheme = 'Nova (base16)'
+	-- Config.color_scheme = 'Duotone Dark'
+	-- Config.color_scheme = 'DjangoSmooth' -- helleres grün
+	-- Config.color_scheme = 'Django' -- dunkleres grüm
+	-- Config.color_scheme = 'darkmatrix' -- mehr dunkles grün
+	Config.color_scheme = 'Dark Violet (base16)'
+	-- Config.color_scheme = 'Cobalt Neon (Gogh)'
+
 	--  Config.tab_bar_at_bottom = true
 	--  Config.use_fancy_tab_bar = true
 	--  Config.hide_tab_bar_if_only_one_tab = false
