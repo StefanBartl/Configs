@@ -16,6 +16,13 @@ return function(Config)
 	--- Define custom keybindings
 	Config.keys = {
 
+		-- Sendet Shift + Enter an Terminals (nvim) weiter
+		{
+			key = "Enter",
+			mods = "SHIFT",
+			action = wezterm.action.SendString("\x1b[13;2u"), -- CSI u: S-Enter
+		},
+
 		{
 			key = 'R',
 			mods = 'CTRL',
