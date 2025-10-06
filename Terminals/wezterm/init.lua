@@ -21,7 +21,7 @@ return function(Config)
 	require("config.window_events")(Config)
 	require("config.keybindings")(Config)
 
-Config.debug_key_events = true
+Config.debug_key_events = false
 
   if is_windows then
     -- Prefer PowerShell Core when present
