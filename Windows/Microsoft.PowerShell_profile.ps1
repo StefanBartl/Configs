@@ -1,53 +1,101 @@
-#Set-Location 'E:\repos'
+# -----------------------------------
+# Helper: test if an external command exists
+# -----------------------------------
+function Test-HasCommand {
+  param([Parameter(Mandatory=$true)][string]$Name)
+  try {
+    $null -ne (Get-Command -Name $Name -ErrorAction Stop)
+  } catch { $false }
+}
 
-# Starship prompt
-Invoke-Expression (&starship init powershell)
+# -----------------------------------
+# Starship prompt (guarded)
+# -----------------------------------
+if (Test-HasCommand 'starship') {
+  try {
+    Invoke-Expression (& starship init powershell)
+  } catch {
+    Write-Host "[warn] starship init failed: $($_.Exception.Message)" -ForegroundColor Yellow
+  }
+} else {
+  # Optional: hint once per session
+  Write-Host "[info] starship not found. Install via winget/scoop/choco." -ForegroundColor DarkYellow
+}
 
-# zoxide directory jumper
-Invoke-Expression (& { (zoxide init powershell | Out-String) })
+# -----------------------------------
+# zoxide directory jumper (guarded)
+# -----------------------------------
+if (Test-HasCommand 'zoxide') {
+  try {
+    # zoxide prints init script to stdout; Out-String ensures a single string for Invoke-Expression
+    Invoke-Expression (& { (zoxide init powershell | Out-String) })
+  } catch {
+    Write-Host "[warn] zoxide init failed: $($_.Exception.Message)" -ForegroundColor Yellow
+  }
+} else {
+  Write-Host "[info] zoxide not found. Install via winget/scoop/choco." -ForegroundColor DarkYellow
+}
 
+# -----------------------------------
+# Window title from CWD (works without external deps)
+# -----------------------------------
 function Invoke-Starship-PreCommand {
-  $cwd = Split-Path -Leaf $PWD.Path
-  $host.ui.RawUI.WindowTitle = "$cwd"
+  try {
+    $cwd = Split-Path -Leaf $PWD.Path
+    $host.ui.RawUI.WindowTitle = "$cwd"
+  } catch { }
 }
 
 # -----------------------------------
-# Aliases as functions (to support arguments)
+# Aliases as functions (to support arguments), guarded 'command'
 # -----------------------------------
-
-# Colored 'ls' with hyperlinks (Kitty compatible)
-# Usage: ls [args]
 function ls {
-  command ls --color=auto --hyperlink @args
+  # Colored 'ls' with hyperlinks (kitty-compatible flags are harmless elsewhere)
+  if (Test-HasCommand 'ls') {
+    command ls --color=auto --hyperlink @args
+  } elseif (Test-HasCommand 'Get-ChildItem') {
+    # Fallback to PowerShell ls
+    Get-ChildItem @args
+  } else {
+    Write-Host "[error] No 'ls' available" -ForegroundColor Red
+  }
 }
 
-# ripgrep with hyperlink output for Kitty terminal
-# Usage: rg [pattern] [path?]
 function rgrep {
-  command rg --hyperlink-format=kitty @args
+  # ripgrep with hyperlink output for Kitty terminal
+  if (Test-HasCommand 'rg') {
+    command rg --hyperlink-format=kitty @args
+  } else {
+    Write-Host "[error] 'rg' (ripgrep) not found" -ForegroundColor Red
+  }
 }
 
-# delta for pretty git diffs with clickable file+line links
-# Usage: delta [file]
 function delta {
-  command delta --hyperlinks --hyperlinks-file-link-format="file://{path}#{line}" @args
+  # pretty git diffs with clickable file+line links
+  if (Test-HasCommand 'delta') {
+    command delta --hyperlinks --hyperlinks-file-link-format="file://{path}#{line}" @args
+  } else {
+    Write-Host "[error] 'delta' not found" -ForegroundColor Red
+  }
 }
 
+# Quick jump to AppData
 function appdata {
-  Set-Location "C:\Users\bartl\AppData"
+  $p = Join-Path $env:USERPROFILE 'AppData'
+  if (Test-Path $p) { Set-Location $p } else { Write-Host "[error] Not found: $p" -ForegroundColor Red }
 }
 
 # Enable colored output in less pager (used by git, etc.)
 $env:LESS = "-R"
 
 # -----------------------------------
-# Toggle Vi/Emacs mode in PSReadLine
+# Toggle Vi/Emacs mode in PSReadLine (guarded)
 # -----------------------------------
-
-# Toggle between Vi and Emacs editing modes
-# Shortcut: Alt+v
-# Usage: Toggle-ViMode
 function Toggle-ViMode {
+  if (-not (Get-Module -ListAvailable PSReadLine)) {
+    Write-Host "[warn] PSReadLine not available" -ForegroundColor Yellow
+    return
+  }
   $current = (Get-PSReadLineOption).EditMode
   if ($current -eq 'Vi') {
     Set-PSReadLineOption -EditMode Emacs
@@ -58,119 +106,99 @@ function Toggle-ViMode {
   }
 }
 
-Set-PSReadLineKeyHandler -Key Alt+v -ScriptBlock { Toggle-ViMode }
+try {
+  Set-PSReadLineKeyHandler -Key Alt+v -ScriptBlock { Toggle-ViMode }
+} catch { }
 
 # -----------------------------------
-# Copy output of last command to clipboard
+# Copy output of last command to clipboard (guarded, re-executes last cmd)
 # -----------------------------------
-
-# Re-executes the last command and copies its output to clipboard
-# Shortcut: Alt+c
-# Usage: Copy-LastOutput
 function Copy-LastOutput {
   try {
-    $last = (Get-History)[-1].CommandLine
+    $hist = Get-History
+    if (-not $hist) { Write-Host "[info] No history yet" -ForegroundColor DarkYellow; return }
+    $last = $hist[-1].CommandLine
+    # Warning: re-executes the last command; consider excluding destructive commands if needed
     $result = Invoke-Expression $last
-    $result | clip
-    Write-Host "Output copied to clipboard from: $last"
-  }
-  catch {
-    Write-Host "Error copying output"
+    if (Test-HasCommand 'clip') {
+      $result | clip
+      Write-Host "Output copied to clipboard from: $last"
+    } else {
+      Write-Host "[warn] 'clip' not found; cannot copy to clipboard" -ForegroundColor Yellow
+    }
+  } catch {
+    Write-Host "Error copying output: $($_.Exception.Message)" -ForegroundColor Red
   }
 }
 
-Set-PSReadLineKeyHandler -Key Alt+c -ScriptBlock { Copy-LastOutput }
+try {
+  Set-PSReadLineKeyHandler -Key Alt+c -ScriptBlock { Copy-LastOutput }
+} catch { }
 
 # -----------------------------------
-# Open file or folder in Windows Explorer
+# Open file/folder in Explorer
 # -----------------------------------
-
-# Opens a file (highlighted) or folder in Explorer
-# Usage: Open-Explorer -Path <path>
 function Open-Explorer {
-  param (
-    [string]$Path
-  )
-
-  if (-not (Test-Path $Path)) {
-    Write-Host "Path does not exist: $Path" -ForegroundColor Red
-    return
-  }
-
+  param([string]$Path)
+  if (-not $Path) { $Path = "." }
+  if (-not (Test-Path $Path)) { Write-Host "Path does not exist: $Path" -ForegroundColor Red; return }
   $fullPath = (Resolve-Path $Path).Path
-
   if (Test-Path $fullPath -PathType Leaf) {
     Start-Process "explorer.exe" "/select,`"$fullPath`""
-  } elseif (Test-Path $fullPath -PathType Container) {
+  } else {
     Start-Process "explorer.exe" "`"$fullPath`""
   }
 }
 
 # -----------------------------------
-# Create a symbolic link (file or directory)
+# Create a symbolic link (prefers native cmdlet; needs admin or Dev Mode)
 # -----------------------------------
-
-# ! Requires admin rights !
-# Creates a symbolic link between -Source and -Target
-# Detects whether target is a file or directory and uses /D if needed
-# Usage: New-Symlink -Source <original file/folder> -Target <link name>
 function New-Symlink {
   [CmdletBinding()]
-  param (
-    [Parameter(Mandatory = $true)]
-    [string]$Source,
-
-    [Parameter(Mandatory = $true)]
-    [string]$Target
+  param(
+    [Parameter(Mandatory=$true)][string]$Source,
+    [Parameter(Mandatory=$true)][string]$Target
   )
-
-  if (-not (Test-Path $Source)) {
-    Write-Host "Source does not exist: $Source" -ForegroundColor Red
-    return
-  }
-
+  if (-not (Test-Path $Source)) { Write-Host "Source does not exist: $Source" -ForegroundColor Red; return }
   $resolvedSource = (Resolve-Path $Source).Path
-  $resolvedTarget = (Resolve-Path -LiteralPath (Split-Path $Target -Parent)).Path + "\" + (Split-Path $Target -Leaf)
-
-  $cmd = "mklink"
-  $args = ""
-
-  if (Test-Path $resolvedSource -PathType Container) {
-    $args += " /D"
-  }
-
-  $args += " `"$resolvedTarget`" `"$resolvedSource`""
+  $targetParent = Split-Path $Target -Parent
+  if ($targetParent -and -not (Test-Path $targetParent)) { New-Item -ItemType Directory -Path $targetParent | Out-Null }
+  $isDir = Test-Path $resolvedSource -PathType Container
 
   try {
-    Start-Process -FilePath "cmd.exe" -ArgumentList "/c $cmd $args" -Verb RunAs -WindowStyle Hidden
-    Write-Host "Symbolic link created: $resolvedTarget → $resolvedSource"
-  }
-  catch {
-    Write-Host "Failed to create symlink: $_" -ForegroundColor Red
+    # Prefer New-Item SymbolicLink (PS 5.1+, Win10+)
+    New-Item -ItemType SymbolicLink -Path $Target -Target $resolvedSource -Force | Out-Null
+    Write-Host "Symbolic link created: $Target → $resolvedSource"
+  } catch {
+    # Fallback to mklink via elevated cmd
+    $args = $isDir ? '/c mklink /D' : '/c mklink'
+    $cmdline = "$args `"$Target`" `"$resolvedSource`""
+    try {
+      Start-Process -FilePath "cmd.exe" -ArgumentList $cmdline -Verb RunAs -WindowStyle Hidden
+      Write-Host "Symbolic link created (mklink): $Target → $resolvedSource"
+    } catch {
+      Write-Host "Failed to create symlink: $($_.Exception.Message)" -ForegroundColor Red
+    }
   }
 }
 
 # -----------------------------------
-# Open new PowerShell window with admin rights
+# Elevation helpers
 # -----------------------------------
-
-# ! Requires admin rights !
-# Launches a new PowerShell window with administrator privileges.
-# Usage: Elevate-Shell
-function Elevate-Shell {
-  Start-Process -Verb RunAs -FilePath "powershell.exe"
-}
-
-# -----------------------------------
-# Open new Starship-enabled PowerShell with admin rights
-# -----------------------------------
-
-# ! Requires admin rights !
-# Launches a new PowerShell window with administrator privileges
-# and loads the user's PowerShell profile (e.g. starship, functions).
-# Usage: Elevate-StarshipShell
+function Elevate-Shell { Start-Process -Verb RunAs -FilePath "powershell.exe" }
 function Elevate-StarshipShell {
-  Start-Process -Verb RunAs -FilePath "powershell.exe" -ArgumentList "-NoExit", "-Command", "$PROFILE"
+  Start-Process -Verb RunAs -FilePath "powershell.exe" -ArgumentList "-NoExit","-Command",$PROFILE
 }
 
-Import-Module MyCliHelpers
+# -----------------------------------
+# Import optional custom module (guarded)
+# -----------------------------------
+if (Get-Module -ListAvailable -Name 'MyCliHelpers') {
+  Import-Module MyCliHelpers
+}
+
+# -----------------------------------
+# Session-local quality-of-life
+# -----------------------------------
+# Ensure kitty-style hyperlinks are harmless in other terminals
+$env:LESS = "-R"
