@@ -1,7 +1,9 @@
 # install-context.ps1
-# Installs a single Explorer context menu entry "Open with Neovim (new instance)"
-# under HKCU and removes common legacy entries under HKCU/HKLM.
-# Default install path: C:\tools\OpenInNvim
+# Installiert zwei Explorer-Kontextmenüeinträge unter HKCU:
+#  - Open with Neovim (new instance)
+#  - Open with Neovim (current instance)
+# Entfernt zuvor gängige Altlasten (HKCU/HKLM).
+# Default-Installationspfad: C:\tools\OpenInNvim
 
 param(
   [string]$InstallPath = 'C:\tools\OpenInNvim'
@@ -37,65 +39,84 @@ function Set-Menu {
   New-ItemProperty -Path ($baseKey + '\command') -Name '(default)' -Value $command -PropertyType String -Force | Out-Null
 }
 
-# 1) Verify required files exist
+# 1) Dateien prüfen
 Ensure-Path $InstallPath
-$ps1 = Join-Path $InstallPath 'open-in-nvim.ps1'
-$vbs = Join-Path $InstallPath 'open-in-nvim.vbs'
-$config = Join-Path $InstallPath 'open-in-nvim.config.ps1'
+$psNew      = Join-Path $InstallPath 'open-in-nvim.ps1'
+$vbsNew     = Join-Path $InstallPath 'open-in-nvim.vbs'
+$psCurrent  = Join-Path $InstallPath 'open-in-nvim-current.ps1'
+$vbsCurrent = Join-Path $InstallPath 'open-in-nvim-current.vbs'
+$config     = Join-Path $InstallPath 'open-in-nvim.config.ps1'
 
-foreach ($f in @($ps1, $vbs)) {
-  if (-not (Test-Path -LiteralPath $f)) {
-    throw "Required file missing: $f"
-  }
+foreach ($f in @($psNew, $vbsNew, $psCurrent, $vbsCurrent)) {
+  if (-not (Test-Path -LiteralPath $f)) { throw "Required file missing: $f" }
 }
 
-# 2) Remove legacy keys (HKCU + HKLM common names)
+# 2) Altlasten entfernen
 $targets = @(
   'HKCU:\Software\Classes\*\shell\Open_in_Neovim',
   'HKCU:\Software\Classes\*\shell\Open_in_Neovim_nvr',
   'HKCU:\Software\Classes\*\shell\Open_in_Neovim_new_hidden',
   'HKCU:\Software\Classes\*\shell\Open_in_Neovim_Debug',
   'HKCU:\Software\Classes\*\shell\Open_in_Neovim_new',
+  'HKCU:\Software\Classes\*\shell\Open_in_Neovim_current',
   'HKCU:\Software\Classes\Directory\shell\Open_in_Neovim',
   'HKCU:\Software\Classes\Directory\shell\Open_in_Neovim_nvr',
   'HKCU:\Software\Classes\Directory\shell\Open_in_Neovim_new_hidden',
   'HKCU:\Software\Classes\Directory\shell\Open_in_Neovim_Debug',
   'HKCU:\Software\Classes\Directory\shell\Open_in_Neovim_new',
+  'HKCU:\Software\Classes\Directory\shell\Open_in_Neovim_current',
   'HKCU:\Software\Classes\Directory\Background\shell\Open_in_Neovim',
   'HKCU:\Software\Classes\Directory\Background\shell\Open_in_Neovim_nvr',
   'HKCU:\Software\Classes\Directory\Background\shell\Open_in_Neovim_new_hidden',
   'HKCU:\Software\Classes\Directory\Background\shell\Open_in_Neovim_Debug',
   'HKCU:\Software\Classes\Directory\Background\shell\Open_in_Neovim_new',
+  'HKCU:\Software\Classes\Directory\Background\shell\Open_in_Neovim_current',
 
   'HKLM:\Software\Classes\*\shell\Open_in_Neovim',
   'HKLM:\Software\Classes\*\shell\Open_in_Neovim_nvr',
   'HKLM:\Software\Classes\*\shell\Open_in_Neovim_new_hidden',
   'HKLM:\Software\Classes\*\shell\Open_in_Neovim_Debug',
   'HKLM:\Software\Classes\*\shell\Open_in_Neovim_new',
+  'HKLM:\Software\Classes\*\shell\Open_in_Neovim_current',
   'HKLM:\Software\Classes\Directory\shell\Open_in_Neovim',
   'HKLM:\Software\Classes\Directory\shell\Open_in_Neovim_nvr',
   'HKLM:\Software\Classes\Directory\shell\Open_in_Neovim_new_hidden',
   'HKLM:\Software\Classes\Directory\shell\Open_in_Neovim_Debug',
   'HKLM:\Software\Classes\Directory\shell\Open_in_Neovim_new',
+  'HKLM:\Software\Classes\Directory\shell\Open_in_Neovim_current',
   'HKLM:\Software\Classes\Directory\Background\shell\Open_in_Neovim',
   'HKLM:\Software\Classes\Directory\Background\shell\Open_in_Neovim_nvr',
   'HKLM:\Software\Classes\Directory\Background\shell\Open_in_Neovim_new_hidden',
   'HKLM:\Software\Classes\Directory\Background\shell\Open_in_Neovim_Debug',
-  'HKLM:\Software\Classes\Directory\Background\shell\Open_in_Neovim_new'
+  'HKLM:\Software\Classes\Directory\Background\shell\Open_in_Neovim_new',
+  'HKLM:\Software\Classes\Directory\Background\shell\Open_in_Neovim_current'
 )
-
 foreach ($k in $targets) { Remove-Key $k }
 
-# 3) Create the single working entry under HKCU
-$display = 'Open with Neovim (new instance)'
-$icon = 'C:\Program Files\Neovim\bin\nvim.exe'
-$wscript = (Get-Command -Name 'wscript.exe' -ErrorAction SilentlyContinue)?.Source
-if (-not $wscript) { $wscript = 'wscript.exe' }
-$cmdFile = $wscript + ' //nologo ' + '"' + (Join-Path $InstallPath 'open-in-nvim.vbs').Replace('"','""') + '"'
+# 3) Einträge anlegen
+$displayNew     = 'Open with Neovim (new instance)'
+$displayCurrent = 'Open with Neovim (current instance)'
+$icon           = 'C:\Program Files\Neovim\bin\nvim.exe'
 
-Set-Menu -baseKey 'HKCU:\Software\Classes\*\shell\Open_in_Neovim_new' -display $display -command ($cmdFile + ' "%1"') -icon $icon
-Set-Menu -baseKey 'HKCU:\Software\Classes\Directory\shell\Open_in_Neovim_new' -display $display -command ($cmdFile + ' "%1"') -icon $icon
-Set-Menu -baseKey 'HKCU:\Software\Classes\Directory\Background\shell\Open_in_Neovim_new' -display $display -command ($cmdFile + ' "%V"') -icon $icon
+$wscript = (Get-Command -Name 'wscript.exe' -ErrorAction SilentlyContinue)
+if ($wscript) { $wscript = $wscript.Source } else { $wscript = 'wscript.exe' }
 
-Write-Host 'Installed HKCU context menu entry: Open with Neovim (new instance)'
-Write-Host 'Done.'
+$cmdNew     = $wscript + ' //nologo "' + $vbsNew.Replace('"','""')     + '"'
+$cmdCurrent = $wscript + ' //nologo "' + $vbsCurrent.Replace('"','""') + '"'
+
+# Dateien
+Set-Menu -baseKey 'HKCU:\Software\Classes\*\shell\Open_in_Neovim_new'     -display $displayNew     -command ($cmdNew + ' "%1"') -icon $icon
+Set-Menu -baseKey 'HKCU:\Software\Classes\*\shell\Open_in_Neovim_current' -display $displayCurrent -command ($cmdCurrent + ' "%1"') -icon $icon
+
+# Ordner
+Set-Menu -baseKey 'HKCU:\Software\Classes\Directory\shell\Open_in_Neovim_new'     -display $displayNew     -command ($cmdNew + ' "%1"') -icon $icon
+Set-Menu -baseKey 'HKCU:\Software\Classes\Directory\shell\Open_in_Neovim_current' -display $displayCurrent -command ($cmdCurrent + ' "%1"') -icon $icon
+
+# Ordner-Hintergrund
+Set-Menu -baseKey 'HKCU:\Software\Classes\Directory\Background\shell\Open_in_Neovim_new'     -display $displayNew     -command ($cmdNew + ' "%V"') -icon $icon
+Set-Menu -baseKey 'HKCU:\Software\Classes\Directory\Background\shell\Open_in_Neovim_current' -display $displayCurrent -command ($cmdCurrent + ' "%V"') -icon $icon
+
+Write-Host 'Kontextmenü installiert:'
+Write-Host "  * $displayNew"
+Write-Host "  * $displayCurrent"
+Write-Host 'Hinweis: Explorer neu starten (taskkill /F /IM explorer.exe ; explorer.exe)'
