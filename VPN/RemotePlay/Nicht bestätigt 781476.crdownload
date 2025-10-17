@@ -1,0 +1,12 @@
+[Interface]
+PrivateKey = 2Ih1PDfO90vZweG29AsnL2nEYcUkgnCCDCOpfti+mnM=
+Address = 192.168.178.203/24,fdbd:233c:5257::203/64
+DNS = 192.168.178.1,fdbd:233c:5257::d624:ddff:fee4:fc68
+DNS = fritz.box
+
+[Peer]
+PublicKey = P50xV7K4c0pcmYSp3e8fPZiR7uaKYfk2f/D+XOj87U4=
+PresharedKey = ngZxvKb7JeK9bp/Bf1rl0C67zz2NEyEI4MUwARbm7Tg=
+AllowedIPs = 192.168.178.0/24,0.0.0.0/0,fdbd:233c:5257::/64,::/0
+Endpoint = gsagc0cwfghjuimo.myfritz.net:56773
+PersistentKeepalive = 25
