@@ -1,4 +1,32 @@
 # -----------------------------------
+# Alias for ~ to Userprofile
+# -----------------------------------
+function ~ {
+    Set-Location $env:USERPROFILE
+}
+
+# -----------------------------------
+# Neovim related aliase
+# -----------------------------------
+function nvim-config {
+    Set-Location C:\Users\bartl\AppData\Local\nvim
+}
+function nvim-data {
+    Set-Location C:\Users\bartl\AppData\Local\nvim-data
+}
+
+
+# -----------------------------------
+# Repos related aliase
+# -----------------------------------
+function repos {
+    Set-Location E:\repos
+}
+function Configs {
+    Set-Location E:\repos\Configs
+}
+
+# -----------------------------------
 # Helper: test if an external command exists
 # -----------------------------------
 function Test-HasCommand {
