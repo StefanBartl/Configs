@@ -13,7 +13,7 @@ return function(Config)
   Config.font = require('wezterm').font_with_fallback {
     -- Primary programming font
     {
-      family = "FiraCode Nerd Font",
+      family = "JetBrainsMono Nerd Font",
       weight = "Regular",
       harfbuzz_features = {
         -- Character variants for better developer ergonomics:
