@@ -9,7 +9,6 @@ local function bind(keys, key, mods, dir)
 	keys[#keys + 1] = { key = key, mods = mods, action = act.ActivatePaneDirection(dir) }
 end
 
-
 --@param Config WezTermConfig
 --@return nil
 return function(Config)
@@ -24,9 +23,9 @@ return function(Config)
 		},
 
 		{
-			key = 'R',
-			mods = 'CTRL',
-			action = wezterm.action.ShowDebugOverlay
+			key = "R",
+			mods = "CTRL",
+			action = wezterm.action.ShowDebugOverlay,
 		},
 
 		-- Sicherstellen, dass die Default-Aktion für CTRL+SHIFT+N nicht greift (wird neu gesetzt mit custom width & heigt)
@@ -57,7 +56,7 @@ return function(Config)
 		{
 			key = "w",
 			mods = "CTRL|SHIFT|ALT",
-			action = wezterm.action.CloseCurrentPane { confirm = true },
+			action = wezterm.action.CloseCurrentPane({ confirm = true }),
 		},
 	}
 
