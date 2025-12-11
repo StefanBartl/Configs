@@ -34,6 +34,13 @@ return function(Config)
 			mods = "CTRL|SHIFT",
 			action = act.DisableDefaultAssignment,
 		},
+
+		{
+			key = "Tab",
+			mods = "CTRL",
+			action = act.DisableDefaultAssignment,
+		},
+
 		-- Unser Mapping: Event auslösen -> Handler spawnt und platziert Fenster
 		{
 			key = "n",
@@ -61,8 +68,8 @@ return function(Config)
 	}
 
 	-- Workaround (windows)
-	bind(Config.keys, "k", "CTRL|SHIFT|ALT", "Up")
-	bind(Config.keys, "h", "CTRL|SHIFT|ALT", "Left")
-	bind(Config.keys, "j", "CTRL|SHIFT|ALT", "Down")
-	bind(Config.keys, "l", "CTRL|SHIFT|ALT", "Right")
+	-- bind(Config.keys, "k", "CTRL|SHIFT|ALT", "Up")
+	-- bind(Config.keys, "h", "CTRL|SHIFT|ALT", "Left")
+	-- bind(Config.keys, "j", "CTRL|SHIFT|ALT", "Down")
+	-- bind(Config.keys, "l", "CTRL|SHIFT|ALT", "Right")
 end
