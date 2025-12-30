@@ -1,7 +1,7 @@
 ---@module 'config.appearance'
 ---@brief UI appearance settings, tab bar, padding, opacity, and theming
 
----@param Config WezTermConfig
+---@param Config WezTerm.Config
 ---@return nil
 return function(Config)
 

@@ -1,8 +1,8 @@
----@module 'color_schemes.HackTheBoxColorScheme'
+---@module 'color_schemes.WezTerm.ColorScheme.HackTheBox'
 
 require("@types.types")
 
----@type HackTheBoxColorScheme
+---@type WezTerm.ColorScheme.HackTheBox
 return {
   name = 'Hack The Box',
 
