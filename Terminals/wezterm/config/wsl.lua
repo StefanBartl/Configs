@@ -3,7 +3,7 @@
 
 require("@types.types")
 
----@param Config WezTermConfig
+---@param Config WezTerm.Config
 ---@return nil
 return function(Config)
   --- Define available WSL distributions to appear in the launcher.

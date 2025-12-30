@@ -1,23 +1,23 @@
----@module 'config.window_placement'
+---@module 'wezterm.utils.window_placement'
 --- Size/position helpers for spawning and adjusting WezTerm windows.
 --- Reuses the same math for gui-startup and custom keybindings.
 
 local wezterm = require("wezterm")
 
----@class ScreenInfo
+---@class Wezterm.Utils.ScreenInfo
 ---@field x integer
 ---@field y integer
 ---@field width integer
 ---@field height integer
 
----@class PlacementOpts
+---@class Wezterm.Utils.PlacementOpts
 ---@field width_factor  number?   -- default 0.8
 ---@field height_factor number?   -- default 0.8
 ---@field center        boolean?  -- default true
 ---@field origin        '"ActiveScreen"'|'"MainScreen"'|'"ScreenCoordinateSystem"'|table? -- default "ActiveScreen"
 
----@param s ScreenInfo
----@param opts PlacementOpts
+---@param s Wezterm.Utils.ScreenInfo
+---@param opts Wezterm.Utils.PlacementOpts
 ---@return integer target_w, integer target_h, integer pos_x, integer pos_y, string|table origin
 local function compute_geometry(s, opts)
   local wf = tonumber(opts.width_factor) or 0.8
@@ -45,7 +45,7 @@ local function apply_to_window(win, s, opts)
 end
 
 --- Spawn a new window with initial position, then set inner size.
---- @param opts PlacementOpts
+--- @param opts Wezterm.Utils.PlacementOpts
 local function spawn_sized_window(opts)
   local gui = wezterm.gui
   local mux = wezterm.mux

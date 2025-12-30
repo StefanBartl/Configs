@@ -3,7 +3,7 @@
 
 require("@types.types")
 
----@param Config WezTermConfig
+---@param Config WezTerm.Config
 ---@return nil
 return function(Config)
   local wezterm = require("wezterm")
@@ -12,7 +12,7 @@ return function(Config)
   local home = os.getenv("USERPROFILE") or os.getenv("HOME")
   local prefix = wezterm.target_triple:find("windows") and (home or "E:") or home
 
-  ---@type HackTheBoxColorScheme
+  ---@type WezTerm.ColorScheme.HackTheBox
   local hackthebox_theme = dofile(prefix .. "/Config/wezterm/color_schemes/hackthebox.lua")
 
   local palette = {}

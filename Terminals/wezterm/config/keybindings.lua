@@ -5,11 +5,11 @@
 local wezterm = require("wezterm")
 local act = wezterm.action
 
-local function bind(keys, key, mods, dir)
-	keys[#keys + 1] = { key = key, mods = mods, action = act.ActivatePaneDirection(dir) }
-end
+-- local function bind(keys, key, mods, dir)
+-- 	keys[#keys + 1] = { key = key, mods = mods, action = act.ActivatePaneDirection(dir) }
+-- end
 
---@param Config WezTermConfig
+--@param Config WezTerm.Config
 --@return nil
 return function(Config)
 	--- Define custom keybindings

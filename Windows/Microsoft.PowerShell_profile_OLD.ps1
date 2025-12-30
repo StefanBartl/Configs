@@ -1,30 +1,29 @@
-# ==============================================================================
-# PowerShell Profile Configuration
-# ==============================================================================
+# -----------------------------------
+# Alias for ~ to Userprofile
+# -----------------------------------
+function ~ {
+    Set-Location $env:USERPROFILE
+}
 
 # -----------------------------------
-# Import PSReadLine for tab completion and history
+# Neovim related aliase
 # -----------------------------------
-if (Get-Module -ListAvailable PSReadLine) {
-  Import-Module PSReadLine
+function nvim-config {
+    Set-Location C:\Users\bartl\AppData\Local\nvim
+}
+function nvim-data {
+    Set-Location C:\Users\bartl\AppData\Local\nvim-data
+}
 
-  # Check PSReadLine version to determine available features
-  $psReadLineVersion = (Get-Module PSReadLine).Version
 
-  if ($psReadLineVersion -ge '2.1.0') {
-    # Modern PSReadLine features (v2.1.0+)
-    Set-PSReadLineOption -PredictionSource History
-    Set-PSReadLineOption -PredictionViewStyle ListView
-  }
-
-  # Basic completion settings (works on all versions)
-  Set-PSReadLineKeyHandler -Key Tab -Function MenuComplete
-  Set-PSReadLineOption -HistorySearchCursorMovesToEnd
-  Set-PSReadLineKeyHandler -Key UpArrow -Function HistorySearchBackward
-  Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
-
-} else {
-  Write-Host "[warn] PSReadLine not available. Install via: Install-Module PSReadLine -Force" -ForegroundColor Yellow
+# -----------------------------------
+# Repos related aliase
+# -----------------------------------
+function repos {
+    Set-Location E:\repos
+}
+function Configs {
+    Set-Location E:\repos\Configs
 }
 
 # -----------------------------------
@@ -47,6 +46,7 @@ if (Test-HasCommand 'starship') {
     Write-Host "[warn] starship init failed: $($_.Exception.Message)" -ForegroundColor Yellow
   }
 } else {
+  # Optional: hint once per session
   Write-Host "[info] starship not found. Install via winget/scoop/choco." -ForegroundColor DarkYellow
 }
 
@@ -55,15 +55,8 @@ if (Test-HasCommand 'starship') {
 # -----------------------------------
 if (Test-HasCommand 'zoxide') {
   try {
-    # Get the init script as a single string
-    $zoxideInit = & zoxide init powershell --hook prompt
-    if ($zoxideInit) {
-      # Join array into single string if necessary
-      if ($zoxideInit -is [array]) {
-        $zoxideInit = $zoxideInit -join "`n"
-      }
-      Invoke-Expression $zoxideInit
-    }
+    # zoxide prints init script to stdout; Out-String ensures a single string for Invoke-Expression
+    Invoke-Expression (& { (zoxide init powershell | Out-String) })
   } catch {
     Write-Host "[warn] zoxide init failed: $($_.Exception.Message)" -ForegroundColor Yellow
   }
@@ -82,64 +75,33 @@ function Invoke-Starship-PreCommand {
 }
 
 # -----------------------------------
-# Alias for ~ to Userprofile
-# -----------------------------------
-function ~ {
-  Set-Location $env:USERPROFILE
-}
-
-# -----------------------------------
-# Neovim related aliases
-# -----------------------------------
-function nvim-config {
-  Set-Location C:\Users\bernhard\AppData\Local\nvim
-  if (Test-HasCommand 'nvim') { nvim }
-}
-
-function nvim-data {
-  Set-Location C:\Users\bernhard\AppData\Local\nvim-data
-}
-
-# -----------------------------------
-# Repos related aliases
-# -----------------------------------
-function repos {
-  Set-Location E:\repos
-}
-
-function Configs {
-  Set-Location E:\repos\Configs
-}
-
-# -----------------------------------
-# Enhanced aliases with proper command invocation
+# Aliases as functions (to support arguments), guarded 'command'
 # -----------------------------------
 function ls {
-  # Try to find Unix-style ls (from Git, WSL, or similar)
-  $lsCmd = Get-Command -Name 'ls.exe' -ErrorAction SilentlyContinue
-  if (-not $lsCmd) {
-    $lsCmd = Get-Command -Name 'ls' -CommandType Application -ErrorAction SilentlyContinue
-  }
-
-  if ($lsCmd) {
-    & $lsCmd.Source --color=auto --hyperlink @args
-  } else {
-    # Fallback to PowerShell's Get-ChildItem
+  # Colored 'ls' with hyperlinks (kitty-compatible flags are harmless elsewhere)
+  if (Test-HasCommand 'ls') {
+    command ls --color=auto --hyperlink @args
+  } elseif (Test-HasCommand 'Get-ChildItem') {
+    # Fallback to PowerShell ls
     Get-ChildItem @args
+  } else {
+    Write-Host "[error] No 'ls' available" -ForegroundColor Red
   }
 }
 
 function rgrep {
+  # ripgrep with hyperlink output for Kitty terminal
   if (Test-HasCommand 'rg') {
-    & rg --hyperlink-format=kitty @args
+    command rg --hyperlink-format=kitty @args
   } else {
     Write-Host "[error] 'rg' (ripgrep) not found" -ForegroundColor Red
   }
 }
 
 function delta {
+  # pretty git diffs with clickable file+line links
   if (Test-HasCommand 'delta') {
-    & delta --hyperlinks --hyperlinks-file-link-format="file://{path}#{line}" @args
+    command delta --hyperlinks --hyperlinks-file-link-format="file://{path}#{line}" @args
   } else {
     Write-Host "[error] 'delta' not found" -ForegroundColor Red
   }
@@ -172,21 +134,19 @@ function Toggle-ViMode {
   }
 }
 
-if (Get-Module PSReadLine) {
-  try {
-    Set-PSReadLineKeyHandler -Key Alt+v -ScriptBlock { Toggle-ViMode }
-  } catch { }
-}
+try {
+  Set-PSReadLineKeyHandler -Key Alt+v -ScriptBlock { Toggle-ViMode }
+} catch { }
 
 # -----------------------------------
-# Copy output of last command to clipboard (guarded)
+# Copy output of last command to clipboard (guarded, re-executes last cmd)
 # -----------------------------------
 function Copy-LastOutput {
   try {
     $hist = Get-History
     if (-not $hist) { Write-Host "[info] No history yet" -ForegroundColor DarkYellow; return }
     $last = $hist[-1].CommandLine
-    # Warning: re-executes the last command
+    # Warning: re-executes the last command; consider excluding destructive commands if needed
     $result = Invoke-Expression $last
     if (Test-HasCommand 'clip') {
       $result | clip
@@ -199,11 +159,9 @@ function Copy-LastOutput {
   }
 }
 
-if (Get-Module PSReadLine) {
-  try {
-    Set-PSReadLineKeyHandler -Key Alt+c -ScriptBlock { Copy-LastOutput }
-  } catch { }
-}
+try {
+  Set-PSReadLineKeyHandler -Key Alt+c -ScriptBlock { Copy-LastOutput }
+} catch { }
 
 # -----------------------------------
 # Open file/folder in Explorer
@@ -221,7 +179,7 @@ function Open-Explorer {
 }
 
 # -----------------------------------
-# Create a symbolic link
+# Create a symbolic link (prefers native cmdlet; needs admin or Dev Mode)
 # -----------------------------------
 function New-Symlink {
   [CmdletBinding()]
@@ -236,13 +194,13 @@ function New-Symlink {
   $isDir = Test-Path $resolvedSource -PathType Container
 
   try {
+    # Prefer New-Item SymbolicLink (PS 5.1+, Win10+)
     New-Item -ItemType SymbolicLink -Path $Target -Target $resolvedSource -Force | Out-Null
     Write-Host "Symbolic link created: $Target → $resolvedSource"
   } catch {
     # Fallback to mklink via elevated cmd
-    $args = if ($isDir) { '/c mklink /D'} else {'/c mklink'}
+    $args = $isDir ? '/c mklink /D' : '/c mklink'
     $cmdline = "$args `"$Target`" `"$resolvedSource`""
-
     try {
       Start-Process -FilePath "cmd.exe" -ArgumentList $cmdline -Verb RunAs -WindowStyle Hidden
       Write-Host "Symbolic link created (mklink): $Target → $resolvedSource"
@@ -265,4 +223,76 @@ function Elevate-StarshipShell {
 # -----------------------------------
 if (Get-Module -ListAvailable -Name 'MyCliHelpers') {
   Import-Module MyCliHelpers
+}
+
+# -----------------------------------
+# Session-local quality-of-life
+# -----------------------------------
+# Ensure kitty-style hyperlinks are harmless in other terminals
+$env:LESS = "-R"
+
+# Progress Bar: Invoke-WebRequest Alternative
+
+<#
+.SYNOPSIS
+    Downloads a file with inline progress instead of overlay banner
+.PARAMETER Uri
+    The URL to download from
+.PARAMETER OutFile
+    The destination file path
+#>
+function Get-WebFile {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Uri,
+
+        [Parameter(Mandatory = $true)]
+        [string]$OutFile
+    )
+
+    # Disable progress bar overlay
+    $oldPref = $ProgressPreference
+    $ProgressPreference = 'SilentlyContinue'
+
+    try {
+        # Use WebClient for manual progress handling
+        $webClient = New-Object System.Net.WebClient
+
+        # Register progress event handler
+        Register-ObjectEvent -InputObject $webClient -EventName DownloadProgressChanged -Action {
+            $received = $EventArgs.BytesReceived
+            $total = $EventArgs.TotalBytesToReceive
+
+            if ($total -gt 0) {
+                $percent = [math]::Round(($received / $total) * 100, 1)
+                $receivedMB = [math]::Round($received / 1MB, 2)
+                $totalMB = [math]::Round($total / 1MB, 2)
+
+                # Inline progress without newline
+                Write-Host "`rProgress: $percent% ($receivedMB MB / $totalMB MB)" -NoNewline -ForegroundColor Cyan
+            }
+        } | Out-Null
+
+        # Start download
+        $webClient.DownloadFileAsync($Uri, $OutFile)
+
+        # Wait for completion
+        while ($webClient.IsBusy) {
+            Start-Sleep -Milliseconds 100
+        }
+
+        # Final newline
+        Write-Host ""
+        Write-Host "Download completed: $OutFile" -ForegroundColor Green
+
+    } catch {
+        Write-Host ""
+        Write-Error "Download failed: $_"
+    } finally {
+        # Cleanup
+        Get-EventSubscriber | Where-Object { $_.SourceObject -eq $webClient } | Unregister-Event
+        $webClient.Dispose()
+        $ProgressPreference = $oldPref
+    }
 }
