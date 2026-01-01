@@ -1,63 +1,59 @@
 ---@module 'config.fonts'
----@brief Font configuration for WezTerm using fallback and typographic ligatures
+---@brief Extended font fallback configuration for maximum glyph coverage in WezTerm
+
 require("@types.types")
 
 local wezterm = require("wezterm")
 local font_utils = require("utils.font")
 
-
-
----Configure font settings for WezTerm including size, family, and OpenType features
+---Configure font settings for WezTerm with extensive fallback chain
 ---@param Config WezTerm.Config The WezTerm configuration table
 ---@return nil
 return function(Config)
-	-- Ensure JetBrainsMono Nerd Font is available
+	-- Ensure required Nerd Fonts are installed
 	font_utils.ensure_jetbrains_font()
 
-	---Base font size in points
+	--- Base font size in points
 	Config.font_size = 12
 
-	---Font fallback list with typographic options
+	--- Font fallback list ordered by priority
 	Config.font = wezterm.font_with_fallback({
-		-- Primary programming font
+		-- Primary programming font (clean text rendering)
 		{
-            family = "Source Code Pro",
-			-- family = "Inter Mono",
-			-- family = "IBM Plex Mono",
-			-- family = "JetBrainsMono Nerd Font",
+			family = "Source Code Pro",
 			weight = "Regular",
 			harfbuzz_features = {
-				-- Character variants for better developer ergonomics:
-				"cv01", -- alternate a
-				"cv05", -- alternate g
-				"cv08", -- i with serif
-				"cv10", -- slashed zero
-				"ss08", -- distinct equals and colon
-				"cv06", -- i: alternate glyph
-				"cv12", -- 0: slashed zero
-				"cv14", -- 3: alternate 3
-				"cv16", -- *: alternate asterisk
-				"cv25", -- .-: dotted minus
-				"cv26", -- :-: alternate colon-dash
-				"cv28", -- {. .}: open/close brace variant
-				"cv29", -- { }: normal brace variant
-				"cv31", -- (): alternate parentheses
-				"cv32", -- .=: dotted equals
-				-- Stylistic sets for operators and symbols:
-				"ss03", -- &: alternate ampersand
-				"ss04", -- $: alternate dollar sign
-				"ss05", -- @: alternate at symbol
-				"ss07", -- =~ !~: tilde variations
-				"ss09", -- >>= <<= ||= |= etc.
+				-- Character variants
+				"cv01", "cv05", "cv08", "cv10", "cv06",
+				"cv12", "cv14", "cv16", "cv25", "cv26",
+				"cv28", "cv29", "cv31", "cv32",
+				-- Stylistic sets
+				"ss03", "ss04", "ss05", "ss07", "ss09",
 			},
 		},
 
-		-- Emoji font fallback (required for color emoji support)
-		{ family = "Noto Color Emoji" },
+		-- Primary Nerd Font fallback for PUA icons
+		{
+			family = "JetBrainsMono Nerd Font",
+			weight = "Regular",
+		},
 
-		-- Last-resort fallback for box drawing / legacy glyphs
-		-- Optional retro font for box drawing or legacy code pages
-		-- { family = "LegacyComputing" },
+		-- Symbol-focused Nerd Font (covers additional icon ranges)
+		{
+			family = "Symbols Nerd Font Mono",
+		},
+
+		-- Powerline and legacy glyphs (some prompts still use this)
+		{
+			family = "PowerlineSymbols",
+		},
+
+		-- Emoji support (color emoji)
+		{
+			family = "Noto Color Emoji",
+		},
+
+		-- Box drawing and general Unicode safety net
 		{
 			family = "DejaVu Sans Mono",
 		},
