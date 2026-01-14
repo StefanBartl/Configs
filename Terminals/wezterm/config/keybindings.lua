@@ -1,6 +1,5 @@
 ---@module 'config.keybindings'
 ---@brief Key mappings for WezTerm, including dynamic color scheme switching
----@version 1.0
 
 local wezterm = require("wezterm")
 local act = wezterm.action
