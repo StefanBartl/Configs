@@ -18,7 +18,7 @@ return function(Config)
 	require("config.experimental")(Config)
 	require("config.window_events")(Config)
 	require("config.keybindings")(Config)
-    require("config.terminal_safety")(Config)
+	require("config.terminal_safety")(Config)
 
 	Config.debug_key_events = false
 	Config.window_close_confirmation = "NeverPrompt"
