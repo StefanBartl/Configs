@@ -20,15 +20,40 @@ return function(Config)
 	Config.font = wezterm.font_with_fallback({
 		-- Primary programming font (clean text rendering)
 		{
-			family = "Source Code Pro",
-			weight = "Regular",
+			family = "Monoid Nerd Font Mono",
+			weight = "Italic",
+
+			-- family = "Monoid Nerd Font Mono",
+			-- weight = "Regular",
+
+			-- family = "OpenDyslexicM Nerd Font Mono",
+			-- weight = "Regular",
+
+			-- family = "Eirian",
+			-- weight = "Bold",
+
 			harfbuzz_features = {
 				-- Character variants
-				"cv01", "cv05", "cv08", "cv10", "cv06",
-				"cv12", "cv14", "cv16", "cv25", "cv26",
-				"cv28", "cv29", "cv31", "cv32",
+				"cv01",
+				"cv05",
+				"cv08",
+				"cv10",
+				"cv06",
+				"cv12",
+				"cv14",
+				"cv16",
+				"cv25",
+				"cv26",
+				"cv28",
+				"cv29",
+				"cv31",
+				"cv32",
 				-- Stylistic sets
-				"ss03", "ss04", "ss05", "ss07", "ss09",
+				"ss03",
+				"ss04",
+				"ss05",
+				"ss07",
+				"ss09",
 			},
 		},
 
