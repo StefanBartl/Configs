@@ -68,11 +68,6 @@ return function(Config)
 			family = "Symbols Nerd Font Mono",
 		},
 
-		-- Powerline and legacy glyphs (some prompts still use this)
-		{
-			family = "PowerlineSymbols",
-		},
-
 		-- Emoji support (color emoji)
 		{
 			family = "Noto Color Emoji",
