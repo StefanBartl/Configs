@@ -20,17 +20,17 @@ return function(Config)
 	Config.font = wezterm.font_with_fallback({
 		-- Primary programming font (clean text rendering)
 		{
-			family = "Monoid Nerd Font Mono",
-			weight = "Italic",
-
-			-- family = "Monoid Nerd Font Mono",
-			-- weight = "Regular",
+			--family = "Monoid Nerd Font Mono",
+			--weight = "Regular",
 
 			-- family = "OpenDyslexicM Nerd Font Mono",
 			-- weight = "Regular",
 
 			-- family = "Eirian",
 			-- weight = "Bold",
+
+	  	family = "JetBrainsMono Nerd Font",
+			weight = "Regular",
 
 			harfbuzz_features = {
 				-- Character variants
