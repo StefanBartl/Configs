@@ -1,0 +1,257 @@
+# ==============================================================================
+# Neovim Full Dev Environment
+# Beinhaltet: nvim, lua, node/ts, go, rust, zig, c/c++, c#, python,
+#             lazygit, ripgrep, fzf, delta, yazi, wakatime, imagemagick,
+#             ghostscript, sox, marksman, pipx/mdformat, delve, u.v.m.
+# ==============================================================================
+FROM ubuntu:24.04
+
+# Kein interaktives apt
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Europe/Berlin
+
+# ------------------------------------------------------------------------------
+# 1. Basis-Pakete + Build-Tools
+# ------------------------------------------------------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Allgemein
+    curl wget git unzip zip tar gzip xz-utils ca-certificates gnupg \
+    software-properties-common apt-transport-https \
+    # Build essentials (C/C++)
+    build-essential gcc g++ cmake make ninja-build pkg-config \
+    clangd \
+    # Lua
+    lua5.1 luarocks \
+    # Python
+    python3 python3-pip python3-venv pipx python3-dev \
+    # Sonstige CLI-Tools
+    fd-find ripgrep fzf jq \
+    # Images & PDF
+    imagemagick ghostscript \
+    # Audio (gp.nvim)
+    sox \
+    # LSP / Tooling dependencies
+    libssl-dev libffi-dev zlib1g-dev \
+    # Clipboard support
+    xclip xsel \
+    # Shell
+    zsh \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# luarocks jsregexp (für LuaSnip)
+RUN luarocks --lua-version=5.1 install jsregexp
+
+# ------------------------------------------------------------------------------
+# 2. Node.js (LTS via NodeSource) + npm globals
+# ------------------------------------------------------------------------------
+RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
+    && apt-get install -y nodejs \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g \
+    yarn \
+    neovim \
+    typescript \
+    typescript-language-server \
+    @biomejs/biome \
+    prettier \
+    pyright \
+    bash-language-server \
+    vscode-langservers-extracted \
+    @tailwindcss/language-server \
+    dockerfile-language-server-nodejs \
+    markdownlint-cli2
+
+# ------------------------------------------------------------------------------
+# 3. Go
+# ------------------------------------------------------------------------------
+ENV GO_VERSION=1.23.4
+RUN curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" \
+    | tar -C /usr/local -xz
+ENV PATH="/usr/local/go/bin:${PATH}"
+ENV GOPATH="/root/go"
+ENV PATH="${GOPATH}/bin:${PATH}"
+
+# Go tools
+RUN go install github.com/go-delve/delve/cmd/dlv@latest \
+    && go install golang.org/x/tools/gopls@latest \
+    && go install github.com/jesseduffield/lazygit@latest
+
+# ------------------------------------------------------------------------------
+# 4. Rust
+# ------------------------------------------------------------------------------
+ENV RUSTUP_HOME=/usr/local/rustup
+ENV CARGO_HOME=/usr/local/cargo
+ENV PATH=/usr/local/cargo/bin:${PATH}
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+    | sh -s -- -y --no-modify-path --default-toolchain stable
+
+RUN rustup component add rust-analyzer rust-src clippy rustfmt
+
+# Rust-basierte CLI-Tools
+RUN cargo install git-delta
+
+# ------------------------------------------------------------------------------
+# 5. Zig
+# ------------------------------------------------------------------------------
+ENV ZIG_VERSION=0.13.0
+RUN curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz" \
+    | tar -C /usr/local -xJ \
+    && ln -s /usr/local/zig-linux-x86_64-${ZIG_VERSION}/zig /usr/local/bin/zig
+
+# zls (Zig Language Server) aus Quellcode
+#RUN git clone --depth 1 https://github.com/zigtools/zls /tmp/zls \
+#    && cd /tmp/zls \
+#&& zig build -Doptimize=ReleaseSafe \
+#&& cp zig-out/bin/zls /usr/local/bin/zls \
+#&& rm -rf /tmp/zls
+
+# ------------------------------------------------------------------------------#
+# 6. .NET / C# (dotnet SDK 8)
+# ------------------------------------------------------------------------------
+RUN curl -fsSL https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb \
+    -o /tmp/ms-prod.deb \
+    && dpkg -i /tmp/ms-prod.deb \
+    && rm /tmp/ms-prod.deb \
+    && apt-get update \
+    && apt-get install -y dotnet-sdk-8.0 \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# OmniSharp LSP (für csharp_ls alternativ über Mason installierbar)
+RUN mkdir -p /opt/omnisharp \
+    && curl -fsSL \
+    "https://github.com/OmniSharp/omnisharp-roslyn/releases/latest/download/omnisharp-linux-x64-net6.0.tar.gz" \
+    | tar -C /opt/omnisharp -xz \
+    && chmod +x /opt/omnisharp/OmniSharp \
+    && ln -sf /opt/omnisharp/OmniSharp /usr/local/bin/omnisharp
+
+# ------------------------------------------------------------------------------
+# 7. Neovim (gepinnte stabile Version – robuster als "latest")
+# ------------------------------------------------------------------------------
+RUN curl -fsSL \
+    "https://github.com/neovim/neovim/releases/download/v0.11.6/nvim-linux-x86_64.tar.gz" \
+    | tar -C /opt -xz \
+    && ln -sf /opt/nvim-linux-x86_64/bin/nvim /usr/local/bin/nvim \
+    # Sanity-Check: bricht den Build ab falls nvim nicht gefunden wird
+    && nvim --version
+
+# pynvim (Python-Provider für nvim) via pipx
+# vim.g.python3_host_prog = "~/.local/pipx/venvs/pynvim/bin/python3"
+RUN pipx install pynvim && pipx ensurepath
+ENV PATH="/root/.local/bin:${PATH}"
+
+# ------------------------------------------------------------------------------
+# 8. Python Tools (pipx)
+# ------------------------------------------------------------------------------
+RUN pipx install mdformat \
+    && pipx inject mdformat \
+    mdformat-gfm \
+    mdformat-frontmatter \
+    mdformat-footnote \
+    mdformat-gfm-alerts \
+    && pipx install pylatexenc
+
+# ------------------------------------------------------------------------------
+# 9. Marksman LSP (Markdown)
+# ------------------------------------------------------------------------------
+RUN curl -fsSL \
+    "https://github.com/artempyanykh/marksman/releases/latest/download/marksman-linux-x64" \
+    -o /usr/local/bin/marksman \
+    && chmod +x /usr/local/bin/marksman
+
+# ------------------------------------------------------------------------------
+# 10. lua-language-server
+# ------------------------------------------------------------------------------
+RUN LLS_VERSION=$(curl -s "https://api.github.com/repos/LuaLS/lua-language-server/releases/latest" \
+    | grep '"tag_name"' | cut -d'"' -f4) \
+    && mkdir -p /opt/lua-ls \
+    && curl -fsSL \
+    "https://github.com/LuaLS/lua-language-server/releases/download/${LLS_VERSION}/lua-language-server-${LLS_VERSION}-linux-x64.tar.gz" \
+    | tar -C /opt/lua-ls -xz \
+    && ln -sf /opt/lua-ls/bin/lua-language-server /usr/local/bin/lua-language-server
+
+# ------------------------------------------------------------------------------
+# 11. git: delta als globaler Pager
+# ------------------------------------------------------------------------------
+RUN git config --global core.pager delta \
+    && git config --global interactive.diffFilter "delta --color-only" \
+    && git config --global delta.navigate true \
+    && git config --global merge.conflictstyle diff3 \
+    && git config --global diff.colorMoved default
+
+# ------------------------------------------------------------------------------
+# 12. Starship Prompt
+# ------------------------------------------------------------------------------
+RUN curl -sS https://starship.rs/install.sh | sh -s -- --yes
+RUN echo 'eval "$(starship init bash)"' >> /root/.bashrc \
+    && echo 'eval "$(starship init zsh)"'  >> /root/.zshrc
+
+# Eigene zsh-Konfiguration aus dem gemounteten Repos-Verzeichnis laden.
+# Auf dem Host liegt die Datei unter:
+#   Windows : E:\repos\my-zsh\init.zsh
+#   Linux   : ~/repos/my-zsh/init.zsh
+# Im Container ist sie immer verfügbar als: /root/repos/my-zsh/init.zsh
+RUN printf '\n# Custom init (gemountet aus repos)\n' >> /root/.zshrc \
+    && printf '[ -f /root/repos/my-zsh/.zshrc ] && source /root/repos/my-zsh/.zshrc\n' \
+    >> /root/.zshrc
+
+# ------------------------------------------------------------------------------
+# 14. Verzeichnisse + Stubs
+# ------------------------------------------------------------------------------
+RUN mkdir -p /root/repos \
+    && mkdir -p /root/.config/nvim \
+    && mkdir -p /root/.local/share/nvim \
+    && mkdir -p /root/.cache/nvim
+
+# Wakatime-Stub (überschreibe mit: -v ~/.wakatime.cfg:/root/.wakatime.cfg)
+RUN printf '[settings]\napi_key = REPLACE_ME\n' > /root/.wakatime.cfg
+
+# ------------------------------------------------------------------------------
+# 15. Finale Umgebungsvariablen
+# ------------------------------------------------------------------------------
+ENV EDITOR=nvim
+ENV VISUAL=nvim
+ENV SHELL=/bin/zsh
+ENV PATH="/usr/local/cargo/bin:/usr/local/go/bin:/root/go/bin:/root/.local/bin:${PATH}"
+ENV REPOS_DIR=/root/repos
+
+# zsh als Login-Shell für root
+RUN chsh -s /bin/zsh root
+
+# ------------------------------------------------------------------------------
+# WORKDIR & CMD
+# ------------------------------------------------------------------------------
+WORKDIR /root/repos
+CMD ["/bin/zsh"]
+
+# ==============================================================================
+# BUILD & RUN (Beispiele)
+# ==============================================================================
+#
+# --- Build ---
+#   podman build -t nvim-dev -f Containerfile .
+#
+# --- Windows (PowerShell) ---
+#   podman run -it --rm \
+#     -v "e:\repos:/root/repos" \
+#     -v "$env:USERPROFILE\.config\nvim:/root/.config/nvim" \
+#     -v "$env:USERPROFILE\.local\share\nvim:/root/.local/share/nvim" \
+#     -v "$env:USERPROFILE\.wakatime.cfg:/root/.wakatime.cfg" \
+#     nvim-dev
+#
+# --- Linux / WSL (bash) ---
+#   podman run -it --rm \
+#     -v ~/repos:/root/repos \
+#     -v ~/.config/nvim:/root/.config/nvim \
+#     -v ~/.local/share/nvim:/root/.local/share/nvim \
+#     -v ~/.wakatime.cfg:/root/.wakatime.cfg \
+#     nvim-dev
+
+# podman run -it --rm  -v /mnt/e/repos:/root/repos:Z  -e REPOS_DIR=/root/repos  localhost/nvim-dev
+
+#
+# Tipp: Mason-Plugins (LSPs, DAPs, Formatter) werden im gemounteten
+# ~/.local/share/nvim persistiert – sie müssen also nur einmal installiert
+# werden, solange der Mount gleich bleibt.
+# ==============================================================================

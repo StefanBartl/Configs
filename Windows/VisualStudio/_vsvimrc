@@ -1,0 +1,67 @@
+" -----------------------------------------------------------------------------
+" VSVIM CONFIGURATION (Mapping-Migration aus Neovim)
+" -----------------------------------------------------------------------------
+
+" Grundlegendes
+set ignorecase
+set smartcase
+set hlsearch
+
+" DEIN WUNSCH: jk für Normal Mode
+inoremap jk <Esc>
+vnoremap jk <Esc>
+tnoremap jk <Esc>
+
+" -----------------------------------------------------------------------------
+" AUS 'general.lua'
+" -----------------------------------------------------------------------------
+" Alles auswählen
+nnoremap <C-a> ggVG
+
+" Schnelles Speichern (Nutzt den nativen VS-Speicherbefehl)
+nnoremap <C-s> :vsc File.SaveSelectedItems<CR>
+inoremap <C-s> <Esc>:vsc File.SaveSelectedItems<CR>a
+
+" Zeichen löschen ohne das Register zu überschreiben (Black Hole Register)
+nnoremap x "_x
+
+" Wort rückwärts löschen ohne Yank
+nnoremap dw vb"_d
+
+" Zahlen inkrementieren/dekrementieren (wie in Neovim)
+nnoremap + <C-a>
+nnoremap - <C-x>
+
+" -----------------------------------------------------------------------------
+" AUS 'editing.lua'
+" -----------------------------------------------------------------------------
+" Leerzeilen einfügen ohne Insert-Mode zu bleiben
+nnoremap <leader><CR> o<Esc>k
+nnoremap <CR> 0i<CR><Esc>k
+
+" Einfügen im Visual Mode ohne das Register mit dem gelöschten Text zu überschreiben
+xnoremap p "_dP
+
+" Zeilen verschieben (Alt+Up/Down) - Nutzt VS-interne Befehle für perfekte Integration
+nnoremap <A-Up> :vsc Edit.MoveSelectedLinesUp<CR>
+nnoremap <A-Down> :vsc Edit.MoveSelectedLinesDown<CR>
+inoremap <A-Up> <Esc>:vsc Edit.MoveSelectedLinesUp<CR>a
+inoremap <A-Down> <Esc>:vsc Edit.MoveSelectedLinesDown<CR>a
+vnoremap <A-Up> :vsc Edit.MoveSelectedLinesUp<CR>gv
+vnoremap <A-Down> :vsc Edit.MoveSelectedLinesDown<CR>gv
+
+" -----------------------------------------------------------------------------
+" AUS 'buf_win_tab.lua' (Fenster-Navigation)
+" -----------------------------------------------------------------------------
+" Wechseln zwischen Splits (Fenstern)
+nnoremap <C-h> <C-w>h
+nnoremap <C-l> <C-w>l
+nnoremap <C-j> <C-w>j
+nnoremap <C-k> <C-w>k
+
+" Fenster schließen (entspricht <leader>q)
+nnoremap <leader>q :vsc Window.CloseDocumentWindow<CR>
+
+" Tabs wechseln (Visual Studio nutzt Dokument-Tabs)
+nnoremap <leader>tn :vsc Window.NextTab<CR>
+nnoremap <leader>tp :vsc Window.PreviousTab<CR>
