@@ -1,0 +1,91 @@
+// --- VSCODEVIM CONFIGURATION (Migration aus Neovim/VSVim) ---
+    "vim.ignorecase": true,
+    "vim.smartcase": true,
+    "vim.hlsearch": true,
+
+    // Leader Key definieren (wichtig für <leader> Mappings)
+    "vim.leader": "<space>",
+
+    // --- INSERT MODE MAPPINGS ---
+    "vim.insertModeKeyBindings": [
+        // jk für Normal Mode
+        { "before": ["j", "k"], "after": ["<Esc>"] },
+        // Schnelles Speichern im Insert Mode
+        {
+            "before": ["<C-s>"],
+            "commands": ["workbench.action.files.save"]
+        }
+    ],
+
+    // --- NORMAL MODE MAPPINGS (nnoremap) ---
+    "vim.normalModeKeyBindingsNonRecursive": [
+        // Alles auswählen
+        { "before": ["<C-a>"], "after": ["g", "g", "V", "G"] },
+        // Schnelles Speichern
+        {
+            "before": ["<C-s>"],
+            "commands": ["workbench.action.files.save"]
+        },
+        // Zeichen löschen ohne Register-Überschreibung
+        { "before": ["x"], "after": ["\"", "_", "x"] },
+        // Wort rückwärts löschen ohne Yank
+        { "before": ["d", "w"], "after": ["v", "b", "\"", "_", "d"] },
+        // Zahlen inkrementieren/dekrementieren
+        { "before": ["+"], "after": ["<C-a>"] },
+        { "before": ["-"], "after": ["<C-x>"] },
+
+        // Leerzeilen einfügen ohne Insert-Mode zu bleiben
+        { "before": ["<leader>", "<Enter>"], "after": ["o", "<Esc>", "k"] },
+        { "before": ["<Enter>"], "after": ["0", "i", "<Enter>", "<Esc>", "k"] },
+
+        // Zeilen verschieben (Alt+Up/Down)
+        {
+            "before": ["<A-Up>"],
+            "commands": ["editor.action.moveLinesUpAction"]
+        },
+        {
+            "before": ["<A-Down>"],
+            "commands": ["editor.action.moveLinesDownAction"]
+        },
+
+        // Wechseln zwischen Splits (Fenstern)
+        { "before": ["<C-h>"], "after": ["<C-w>", "h"] },
+        { "before": ["<C-l>"], "after": ["<C-w>", "l"] },
+        { "before": ["<C-j>"], "after": ["<C-w>", "j"] },
+        { "before": ["<C-k>"], "after": ["<C-w>", "k"] },
+
+        // Fenster schließen (<leader>q)
+        {
+            "before": ["<leader>", "q"],
+            "commands": ["workbench.action.closeActiveEditor"]
+        },
+
+        // Tabs/Editoren wechseln
+        {
+            "before": ["<leader>", "t", "n"],
+            "commands": ["workbench.action.nextEditor"]
+        },
+        {
+            "before": ["<leader>", "t", "p"],
+            "commands": ["workbench.action.previousEditor"]
+        }
+    ],
+
+    // --- VISUAL MODE MAPPINGS (vnoremap / xnoremap) ---
+    "vim.visualModeKeyBindingsNonRecursive": [
+        // jk für Normal Mode aus Visual Mode
+        { "before": ["j", "k"], "after": ["<Esc>"] },
+
+        // Einfügen ohne das Register mit gelöschtem Text zu überschreiben
+        { "before": ["p"], "after": ["\"", "_", "d", "P"] },
+
+        // Zeilen verschieben im Visual Mode
+        {
+            "before": ["<A-Up>"],
+            "commands": ["editor.action.moveLinesUpAction"]
+        },
+        {
+            "before": ["<A-Down>"],
+            "commands": ["editor.action.moveLinesDownAction"]
+        }
+    ]

@@ -1,3 +1,0 @@
-New-Item -ItemType SymbolicLink
-  -Path "C:\Users\bartl\Documents\PowerShell\Microsoft.PowerShell_profile.ps1"
-  -Target "E:\MyGithub\Configs\Windows\Microsoft.PowerShell_profile.ps1"

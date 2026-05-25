@@ -8,6 +8,17 @@
 # published modules. Import with -DisableNameChecking to suppress the warning.
 # ==============================================================================
 
+# function prompt {
+    # # Sendet das aktuelle Verzeichnis an das Windows Terminal
+    # $currentDir = $ExecutionContext.SessionState.Path.CurrentLocation.ProviderPath
+    # if ($env:WT_SESSION) {
+        # [Console]::Write("`e]9;9;`"$currentDir`"`e\")
+    # }
+
+    # # Hier wird der normale Prompt-Text definiert (z.B. "PWSH C:\Pfad>")
+    # "PWSH $($ExecutionContext.SessionState.Path.CurrentFolderText)> "
+# }
+
 # ------------------------------------------------------------------------------
 # Internal: human-readable byte sizes (KiB/MiB/GiB)
 # ------------------------------------------------------------------------------
@@ -182,6 +193,25 @@ function countfiles {
     } catch { Write-Error $_ }
 }
 
+# o: Öffne Dateien oder Ordner mit der Standard-App (Ersatz für o.cmd)
+function o {
+    [CmdletBinding()]
+    param(
+        [Parameter(Position = 0, ValueFromPipeline = $true)]
+        [string]$Path = '.'
+    )
+    process {
+        # Falls nichts übergeben wurde oder ein leerer String
+        if ([string]::IsNullOrWhiteSpace($Path)) { $Path = '.' }
+
+        try {
+            # Startet die Datei/Ordner mit der Windows-Standardanwendung
+            Start-Process -FilePath $Path
+        } catch {
+            Write-Error "Datei oder Verzeichnis konnte nicht geöffnet werden: $_"
+        }
+    }
+}
 # ==============================================================================
 # Elevation helpers
 # ==============================================================================
