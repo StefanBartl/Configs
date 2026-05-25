@@ -57,7 +57,9 @@ function ~ { Set-Location $env:USERPROFILE }
 
 # Open the Neovim config directory and optionally start nvim
 function nvim-config {
-    $cfgDir = 'C:\Users\StefanBartl\AppData\Local\nvim'
+    # Nutzt die Umgebungsvariable für den lokalen AppData-Ordner des aktuellen Users
+    $cfgDir = Join-Path $env:LOCALAPPDATA 'nvim'
+
     if (-not (Test-Path $cfgDir)) {
         Write-Host "[error] Neovim config dir not found: $cfgDir" -ForegroundColor Red
         return
@@ -68,14 +70,39 @@ function nvim-config {
 
 # Navigate to the Neovim data directory
 function nvim-data {
-    $dataDir = 'C:\Users\StefanBartl\AppData\Local\nvim-data'
-    if (Test-Path $dataDir) { Set-Location $dataDir }
-    else { Write-Host "[error] Not found: $dataDir" -ForegroundColor Red }
+    $dataDir = Join-Path $env:LOCALAPPDATA 'nvim-data'
+
+    if (Test-Path $dataDir) {
+        Set-Location $dataDir
+    }
+    else {
+        Write-Host "[error] Not found: $dataDir" -ForegroundColor Red
+    }
 }
 
-# Quick jumps to common project roots
-function repos   { Set-Location 'C:\repos' }
-function Configs { Set-Location 'C:\repos\Configs' }
+# Interne Helper-Funktion
+function name:jump-to-repo {
+    param([string]$SubDir)
+
+    if (-not $env:REPOS_DIR) {
+        Write-Host "[error] Umgebungsvariable REPOS_DIR ist nicht gesetzt." -ForegroundColor Red
+        return
+    }
+
+    # Wenn kein Unterordner übergeben wurde, nimm die Root, sonst häng ihn an
+    $target = $SubDir ? (Join-Path $env:REPOS_DIR $SubDir) : $env:REPOS_DIR
+
+    if (Test-Path $target) {
+        Set-Location $target
+    } else {
+        Write-Host "[error] Pfad existiert nicht: $target" -ForegroundColor Red
+    }
+}
+
+function repos     { name:jump-to-repo }
+function Configs   { name:jump-to-repo 'Configs' }
+function WKDBooks  { name:jump-to-repo 'WKDBooks' }
+function Notes     { name:jump-to-repo 'Notes' }
 
 # Quick jump to AppData
 function appdata {
