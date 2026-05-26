@@ -1,142 +1,156 @@
 # ==============================================================================
-# PowerShell Profile Configuration
+# Microsoft.PowerShell_profile.ps1  –  CurrentUserCurrentHost
 # ==============================================================================
-# Paths:
-#   C:\Users\StefanBartl\OneDrive - TRICENTIS\Dokumente\WindowsPowerShell\Microsoft.PowerShell_profile.ps1
-#   $PROFILE
+# Managed via Symlink / Loader-Script aus:
+#   $env:REPOS_DIR\Configs\Windows\DOTFILES\WindowsPowerShell\
+#
+# Einrichtung auf neuer Maschine:
+#   $env:REPOS_DIR setzen, dann ausführen:
+#   & "$env:REPOS_DIR\Configs\Windows\DOTFILES\install-DOTFILES.ps1"
+#
 # ==============================================================================
 
-# ------------------------------------------------------------------------------
-# Internal helper: check whether an external command exists on PATH.
-# Declared first so all subsequent guards can use it.
-# ------------------------------------------------------------------------------
-# Verbesserter Helfer: Prüft PATH und fügt bei Bedarf den Winget-Pfad live hinzu
-# ------------------------------------------------------------------------------
+#region ── 0. Lokaler Modul-Pfad (Performance-kritisch) ──────────────────────
+# Trägt einen lokalen Pfad (nie OneDrive) vorne in $PSModulePath ein.
+# Dadurch findet Import-Module MyCliHelpers die Local-Junction statt des
+# OneDrive-Pfads → kein Sync-Layer, kein Cloud-Overhead, kein AV-Delay.
+# Die Junction wird von install-DOTFILES.ps1 erstellt.
+$_localModules = Join-Path $env:LOCALAPPDATA 'PowerShell\Modules'
+if ((Test-Path $_localModules) -and ($env:PSModulePath -notlike "*$_localModules*")) {
+    $env:PSModulePath = "$_localModules$([IO.Path]::PathSeparator)$env:PSModulePath"
+}
+Remove-Variable -Name _localModules -ErrorAction SilentlyContinue
+#endregion
+
+#region ── 1. Test-HasCommand ──────────────────────────────────────────────────
+# Session-Dictionary als Cache: jeder Tool-Name wird maximal einmal via
+# Get-Command geprüft. Winget-Fallback läuft ebenfalls maximal einmal pro Name.
+$script:_cmdCache = [System.Collections.Generic.Dictionary[string, bool]]::new(8)
+
 function Test-HasCommand {
-    param([Parameter(Mandatory = $true)][string]$Name)
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string]$Name)
 
-    # 1. Standard-Prüfung über die Umgebungsvariablen
-    if (Get-Command -Name $Name -ErrorAction SilentlyContinue) {
-        return $true
-    }
+    [bool]$cached = $false
+    if ($script:_cmdCache.TryGetValue($Name, [ref]$cached)) { return $cached }
 
-    # 2. Fallback: Falls Windows den Winget-Pfad verschluckt hat, fügen wir ihn live hinzu
-    $wingetPath = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links"
-    if (Test-Path $wingetPath) {
-        # Falls der Pfad noch nicht im aktuellen Umgebungspfad ist, temporär in dieser Session anhängen
-        if ($env:PATH -notlike "*$wingetPath*") {
+    $found = [bool](Get-Command -Name $Name -ErrorAction SilentlyContinue)
+
+    # Winget-Fallback: falls der Winget-Link-Pfad fehlt, einmalig reparieren
+    if (-not $found) {
+        $wingetPath = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Links'
+        if ((Test-Path $wingetPath) -and ($env:PATH -notlike "*$wingetPath*")) {
             $env:PATH = "$env:PATH;$wingetPath"
-        }
-        # Erneuter Versuch nach dem Fix
-        if (Get-Command -Name $Name -ErrorAction SilentlyContinue) {
-            return $true
+            $found    = [bool](Get-Command -Name $Name -ErrorAction SilentlyContinue)
         }
     }
 
-    return $false
+    $script:_cmdCache[$Name] = $found
+    return $found
 }
+#endregion
 
-# ------------------------------------------------------------------------------
-# Starship prompt  –  BOM-freier Cache für PS 5.1
-# ------------------------------------------------------------------------------
-if (Test-HasCommand 'starship') {
-    try {
-        $starshipCache = Join-Path $env:TEMP 'pwsh_starship_init.ps1'
-        $needsRefresh  = (-not (Test-Path $starshipCache)) -or
-                         ((Get-Item $starshipCache).LastWriteTime -lt (Get-Date).AddDays(-1))
+#region ── 2. Init-Cache-Hilfsfunktion ────────────────────────────────────────
+# Gemeinsame Logik für Starship und Zoxide:
+# – Cache liegt in LocalAppData (lokal, persistent, nie OneDrive, nie TEMP)
+# – TTL: 7 Tage – init-Skripte ändern sich selten; tägliche Neuausführung war
+#   unnötige Startup-Last
+# – Schreibt nur, wenn Init-Ausgabe nicht leer ist → altes Cache bleibt erhalten
+#   wenn ein Tool vorübergehend kaputt ist
+function Update-InitCache {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$CachePath,
+        [Parameter(Mandatory)][scriptblock]$InitBlock,
+        [int]$MaxAgeDays = 7
+    )
+    $dir = Split-Path $CachePath
+    if (-not (Test-Path $dir)) { $null = New-Item -ItemType Directory -Path $dir -Force }
 
-        if ($needsRefresh) {
-            $initScript = (& starship init powershell) -join "`n"
-            if ([string]::IsNullOrWhiteSpace($initScript)) {
-                throw "starship init returned empty output"
-            }
-            # UTF-8 OHNE BOM – wichtig für PS 5.1, sonst schlägt dot-sourcing silent fehl
+    $isStale = (-not (Test-Path $CachePath)) -or
+               ((Get-Item $CachePath -ErrorAction SilentlyContinue).LastWriteTime `
+                -lt (Get-Date).AddDays(-$MaxAgeDays))
+
+    if ($isStale) {
+        $lines = & $InitBlock
+        if ($lines -and -not [string]::IsNullOrWhiteSpace(($lines -join ''))) {
+            # UTF-8 ohne BOM – wichtig für PS 5.1 Dot-Sourcing
             [System.IO.File]::WriteAllText(
-                $starshipCache,
-                $initScript,
-                [System.Text.UTF8Encoding]::new($false)   # $false = kein BOM
-            )
-        }
-
-        . $starshipCache
-    } catch {
-        Write-Host "[warn] starship init failed: $($_.Exception.Message)" -ForegroundColor Yellow
-    }
-} else {
-    Write-Host "[info] starship not found. Install via: winget install Starship.Starship" -ForegroundColor DarkYellow
-}
-
-# ------------------------------------------------------------------------------
-# zoxide  –  BOM-freier Cache + danach PSReadLine-Suggestions konfigurieren
-# ------------------------------------------------------------------------------
-if (Test-HasCommand 'zoxide') {
-    try {
-        $zoxideCache  = Join-Path $env:TEMP 'pwsh_zoxide_init.ps1'
-        $needsRefresh = (-not (Test-Path $zoxideCache)) -or
-                        ((Get-Item $zoxideCache).LastWriteTime -lt (Get-Date).AddDays(-1))
-
-        if ($needsRefresh) {
-            $initScript = (& zoxide init powershell --hook prompt) -join "`n"
-            if ([string]::IsNullOrWhiteSpace($initScript)) {
-                throw "zoxide init returned empty output"
-            }
-            [System.IO.File]::WriteAllText(
-                $zoxideCache,
-                $initScript,
+                $CachePath,
+                ($lines -join "`n"),
                 [System.Text.UTF8Encoding]::new($false)
             )
         }
-
-        . $zoxideCache
-    } catch {
-        Write-Host "[warn] zoxide init failed: $($_.Exception.Message)" -ForegroundColor Yellow
     }
-} else {
-    Write-Host "[info] zoxide not found. Install via: winget install ajeetdsouza.zoxide" -ForegroundColor DarkYellow
+
+    # Dot-Source: auch dann noch möglich wenn Update fehlschlug (alter Cache)
+    if (Test-Path $CachePath) { . $CachePath }
 }
 
-# ------------------------------------------------------------------------------
-# PSReadLine  –  Inline-Suggestions + komfortables Tab-Verhalten
-#
-# Voraussetzung: PSReadLine >= 2.1
-#   Install-Module PSReadLine -Scope CurrentUser -Force   (einmalig, als Admin)
-# ------------------------------------------------------------------------------
-if (Get-Module -Name PSReadLine -ErrorAction SilentlyContinue) {
-    $psrlVersion = (Get-Module PSReadLine).Version
+$_cacheBase = Join-Path $env:LOCALAPPDATA 'pwsh\cache'
+#endregion
 
-    # Inline-Suggestion aus der History (grauer Geistertext) – ab PSReadLine 2.1
-    if ($psrlVersion -ge [version]'2.1') {
+#region ── 3. Starship Prompt ─────────────────────────────────────────────────
+if (Test-HasCommand 'starship') {
+    try {
+        Update-InitCache `
+            -CachePath (Join-Path $_cacheBase 'starship_init.ps1') `
+            -InitBlock { & starship init powershell }
+    } catch {
+        Write-Host "[warn] starship init fehlgeschlagen: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host '[info] starship nicht gefunden – winget install Starship.Starship' -ForegroundColor DarkYellow
+}
+#endregion
+
+#region ── 4. Zoxide ──────────────────────────────────────────────────────────
+if (Test-HasCommand 'zoxide') {
+    try {
+        Update-InitCache `
+            -CachePath (Join-Path $_cacheBase 'zoxide_init.ps1') `
+            -InitBlock { & zoxide init powershell --hook prompt }
+    } catch {
+        Write-Host "[warn] zoxide init fehlgeschlagen: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host '[info] zoxide nicht gefunden – winget install ajeetdsouza.zoxide' -ForegroundColor DarkYellow
+}
+
+Remove-Variable -Name _cacheBase -ErrorAction SilentlyContinue
+#endregion
+
+#region ── 5. PSReadLine ──────────────────────────────────────────────────────
+# In PS 7 ist PSReadLine bereits geladen – kein ListAvailable-Scan nötig.
+# Einmalig in Variable cachen statt zweimal Get-Module aufzurufen.
+$_psrl = Get-Module PSReadLine -ErrorAction SilentlyContinue
+if ($_psrl) {
+    $psrlVer = $_psrl.Version
+
+    # Prediction-Source: HistoryAndPlugin erst ab 2.2 verfügbar
+    if ($psrlVer -ge [version]'2.2') {
+        Set-PSReadLineOption -PredictionSource HistoryAndPlugin
+        Set-PSReadLineOption -PredictionViewStyle ListView   # F2 wechselt Ansicht
+    } elseif ($psrlVer -ge [version]'2.1') {
         Set-PSReadLineOption -PredictionSource History
     }
 
-    # Dropdown-Liste statt einzelner Inline-Suggestion – ab PSReadLine 2.2
-    if ($psrlVersion -ge [version]'2.2') {
-        Set-PSReadLineOption -PredictionSource HistoryAndPlugin
-        Set-PSReadLineOption -PredictionViewStyle ListView   # F2 schaltet zwischen beiden um
-    }
-
-    # Tab öffnet ein auswählbares Menü aller Matches (statt blindem erstem Treffer)
-    Set-PSReadLineKeyHandler -Key Tab -Function MenuComplete
-
-    # Shift+Tab rückwärts durch die Completion-Liste
-    Set-PSReadLineKeyHandler -Key Shift+Tab -Function TabCompletePrevious
-
-    # Pfeiltasten filtern die History auf den bereits getippten Prefix
-    Set-PSReadLineKeyHandler -Key UpArrow   -Function HistorySearchBackward
-    Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
+    Set-PSReadLineKeyHandler -Key Tab        -Function MenuComplete
+    Set-PSReadLineKeyHandler -Key Shift+Tab  -Function TabCompletePrevious
+    Set-PSReadLineKeyHandler -Key UpArrow    -Function HistorySearchBackward
+    Set-PSReadLineKeyHandler -Key DownArrow  -Function HistorySearchForward
 }
-# Enable colored output in less pager (used by git, delta, etc.)
-$env:LESS = '-R'
+Remove-Variable -Name _psrl -ErrorAction SilentlyContinue
+#endregion
 
-# ------------------------------------------------------------------------------
-# MyCliHelpers module
-#
-# Avoid Get-Module -ListAvailable: it scans all paths in $PSModulePath and can
-# cost 1-2s on network-backed paths (OneDrive, UNC). Instead, attempt a direct
-# import and suppress the error silently.
-#
-# -DisableNameChecking suppresses the "unapproved verb" warning that fires for
-# convenience aliases like `ls`, `mkcd`, `gg`, etc. These helpers are
-# intentionally named for muscle-memory, not for discoverability.
-# ------------------------------------------------------------------------------
+#region ── 6. Umgebungsvariablen ──────────────────────────────────────────────
+# Farbige Pager-Ausgabe für git, delta, man, etc.
+$env:LESS = '-R'
+#endregion
+
+#region ── 7. MyCliHelpers-Modul ──────────────────────────────────────────────
+# Wird aus dem lokalen Pfad (Abschnitt 0) geladen – kein OneDrive-Zugriff.
+# -DisableNameChecking unterdrückt "unapproved verb"-Warnung für Kurzaliase
+# wie ls, mkcd, gg etc., die absichtlich Unix-vertraut benannt sind.
 Import-Module MyCliHelpers -ErrorAction SilentlyContinue -DisableNameChecking
+#endregion
