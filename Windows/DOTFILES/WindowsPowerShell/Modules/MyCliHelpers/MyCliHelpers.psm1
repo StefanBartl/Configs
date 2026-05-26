@@ -1,33 +1,44 @@
 # ==============================================================================
 # MyCliHelpers.psm1
-# Path: C:\Users\StefanBartl\...\WindowsPowerShell\Modules\MyCliHelpers\MyCliHelpers.psm1
-# Cross-platform friendly shell helpers.
+# ==============================================================================
+# Cross-platform-freundliche Shell-Helfer für Windows PowerShell 7+.
 #
-# Note on verb naming: functions like `ls`, `mkcd`, `gg` intentionally use
-# short, Unix-familiar names rather than the Verb-Noun convention required for
-# published modules. Import with -DisableNameChecking to suppress the warning.
+# Pfade:
+#   Quelle:  $env:REPOS_DIR\Configs\Windows\DOTFILES\WindowsPowerShell\Modules\MyCliHelpers\
+#   Geladen: über Junction in $env:LOCALAPPDATA\PowerShell\Modules\MyCliHelpers\
+#            (primär) oder $DOCUMENTS\PowerShell\Modules\MyCliHelpers\ (Fallback)
+#
+# Hinweise:
+#   – Funktionen wie `ls`, `mkcd`, `gg` nutzen Unix-vertraute Kurznamen statt
+#     Verb-Noun-Konvention. Import mit -DisableNameChecking, um die Warnung zu
+#     unterdrücken.
+#   – Windows-spezifische Funktionen sind mit $IsWindows-Guards versehen.
+#   – Alle Pfade werden aus Umgebungsvariablen abgeleitet – keine hardcodierten
+#     User-Pfade.
 # ==============================================================================
 
-# function prompt {
-    # # Sendet das aktuelle Verzeichnis an das Windows Terminal
-    # $currentDir = $ExecutionContext.SessionState.Path.CurrentLocation.ProviderPath
-    # if ($env:WT_SESSION) {
-        # [Console]::Write("`e]9;9;`"$currentDir`"`e\")
-    # }
+#region ── Modul-init: einmalige Command-Lookups ──────────────────────────────
+# Gecacht auf Modul-Ebene ($script:): teuer nur beim ersten Import, dann O(1).
+# Path ändert sich in einer Session nicht – daher ist einmaliges Cachen sicher.
 
-    # # Hier wird der normale Prompt-Text definiert (z.B. "PWSH C:\Pfad>")
-    # "PWSH $($ExecutionContext.SessionState.Path.CurrentFolderText)> "
-# }
+# ls-Executable: Git-for-Windows ls.exe bevorzugt, dann jede Application 'ls'
+$script:_lsExe = (Get-Command 'ls.exe' -CommandType Application -ErrorAction SilentlyContinue) ??
+                 (Get-Command 'ls'      -CommandType Application -ErrorAction SilentlyContinue)
+
+# Session-Cache für Test-HasCommand (innerhalb des Moduls)
+$script:_cmdCache = [System.Collections.Generic.Dictionary[string, bool]]::new(8)
+#endregion
+
+#region ── Interne Helfer ─────────────────────────────────────────────────────
 
 # ------------------------------------------------------------------------------
-# Internal: human-readable byte sizes (KiB/MiB/GiB)
+# Convert-BytesToHuman  –  menschenlesbare Byte-Größen (KiB/MiB/GiB)
 # ------------------------------------------------------------------------------
 function Convert-BytesToHuman {
     [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][long]$Bytes
-    )
-    $units = [string[]]@('B','KiB','MiB','GiB','TiB','PiB','EiB')
+    param([Parameter(Mandatory)][long]$Bytes)
+
+    $units = [string[]]@('B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB')
     $i     = 0
     $value = [double]$Bytes
     while ($value -ge 1024 -and $i -lt ($units.Count - 1)) {
@@ -38,72 +49,86 @@ function Convert-BytesToHuman {
 }
 
 # ------------------------------------------------------------------------------
-# Internal: check whether an external command exists on PATH.
-# Duplicated here so the module works standalone without the profile helper.
+# Test-HasCommand  –  prüft ob ein externer Befehl im PATH verfügbar ist.
+# Separat implementiert damit das Modul standalone (ohne Profil) funktioniert.
+# Ergebnisse werden session-weit gecacht.
 # ------------------------------------------------------------------------------
 function Test-HasCommand {
-    param([Parameter(Mandatory = $true)][string]$Name)
-    try {
-        $null -ne (Get-Command -Name $Name -ErrorAction Stop)
-    } catch { $false }
+    param([Parameter(Mandatory)][string]$Name)
+
+    [bool]$hit = $false
+    if ($script:_cmdCache.TryGetValue($Name, [ref]$hit)) { return $hit }
+
+    $found = [bool](Get-Command -Name $Name -ErrorAction SilentlyContinue)
+    $script:_cmdCache[$Name] = $found
+    return $found
 }
+#endregion
 
-# ==============================================================================
-# Navigation helpers
-# ==============================================================================
+#region ── Navigation ─────────────────────────────────────────────────────────
 
-# Navigate to $USERPROFILE
+# ~ : Wechsel ins Home-Verzeichnis
 function ~ { Set-Location $env:USERPROFILE }
 
-# Open the Neovim config directory and optionally start nvim
+# nvim-config : Wechsel ins Neovim-Config-Verzeichnis und öffnet nvim
 function nvim-config {
-    $cfgDir = 'C:\Users\StefanBartl\AppData\Local\nvim'
+    # Pfad aus Umgebungsvariable – funktioniert für jeden User, jede Maschine
+    $cfgDir = Join-Path $env:LOCALAPPDATA 'nvim'
     if (-not (Test-Path $cfgDir)) {
-        Write-Host "[error] Neovim config dir not found: $cfgDir" -ForegroundColor Red
+        Write-Host "[error] Neovim config dir nicht gefunden: $cfgDir" -ForegroundColor Red
         return
     }
     Set-Location $cfgDir
     if (Test-HasCommand 'nvim') { nvim }
 }
 
-# Navigate to the Neovim data directory
+# nvim-data : Wechsel ins Neovim-Data-Verzeichnis
 function nvim-data {
-    $dataDir = 'C:\Users\StefanBartl\AppData\Local\nvim-data'
+    $dataDir = Join-Path $env:LOCALAPPDATA 'nvim-data'
     if (Test-Path $dataDir) { Set-Location $dataDir }
-    else { Write-Host "[error] Not found: $dataDir" -ForegroundColor Red }
+    else { Write-Host "[error] Nicht gefunden: $dataDir" -ForegroundColor Red }
 }
 
-# Quick jumps to common project roots
-function repos   { Set-Location 'C:\repos' }
-function Configs { Set-Location 'C:\repos\Configs' }
+# repos : Wechsel ins Repos-Root-Verzeichnis ($env:REPOS_DIR oder C:\repos)
+function repos {
+    $dir = if ($env:REPOS_DIR) { $env:REPOS_DIR } else { 'C:\repos' }
+    if (Test-Path $dir) { Set-Location $dir }
+    else { Write-Host "[error] Repos-Verzeichnis nicht gefunden: $dir" -ForegroundColor Red }
+}
 
-# Quick jump to AppData
+# Configs : Wechsel in $env:REPOS_DIR\Configs
+function Configs {
+    $base = if ($env:REPOS_DIR) { $env:REPOS_DIR } else { 'C:\repos' }
+    $dir  = Join-Path $base 'Configs'
+    if (Test-Path $dir) { Set-Location $dir }
+    else { Write-Host "[error] Configs nicht gefunden: $dir" -ForegroundColor Red }
+}
+
+# appdata : Wechsel ins AppData-Verzeichnis
 function appdata {
     $p = Join-Path $env:USERPROFILE 'AppData'
     if (Test-Path $p) { Set-Location $p }
-    else { Write-Host "[error] Not found: $p" -ForegroundColor Red }
+    else { Write-Host "[error] Nicht gefunden: $p" -ForegroundColor Red }
 }
 
-# mkcd: create directory hierarchy and enter it
+# mkcd : Verzeichnis anlegen und hineinwechseln
 function mkcd {
-    [CmdletBinding(SupportsShouldProcess = $true)]
-    param(
-        [Parameter(Mandatory, Position = 0)][string]$Path
-    )
+    [CmdletBinding(SupportsShouldProcess)]
+    param([Parameter(Mandatory, Position = 0)][string]$Path)
+
     try {
-        if ($PSCmdlet.ShouldProcess($Path, 'Create directory and enter')) {
+        if ($PSCmdlet.ShouldProcess($Path, 'Verzeichnis anlegen und betreten')) {
             New-Item -ItemType Directory -Path $Path -Force -ErrorAction Stop | Out-Null
             Set-Location -Path (Resolve-Path -Path $Path -ErrorAction Stop)
         }
     } catch { Write-Error $_ }
 }
 
-# cdl: cd and list newest-first with human-readable sizes
+# cdl : cd + sortierte Verzeichnisanzeige (neueste zuerst, menschenlesbare Größen)
 function cdl {
     [CmdletBinding()]
-    param(
-        [Parameter(Position = 0)][string]$Path = $HOME
-    )
+    param([Parameter(Position = 0)][string]$Path = $HOME)
+
     Set-Location -Path $Path
     Get-ChildItem -Force -ErrorAction SilentlyContinue |
         Sort-Object -Property LastWriteTime -Descending |
@@ -113,152 +138,157 @@ function cdl {
             '{0}  {1,8}  {2}' -f $time, $size, $_.Name
         }
 }
+#endregion
 
-# ==============================================================================
-# Clipboard helpers
-# ==============================================================================
+#region ── Clipboard ──────────────────────────────────────────────────────────
 
-# Copy the output of the last history entry to the clipboard
+# Copy-LastOutput : Ausgabe des letzten History-Eintrags in die Zwischenablage
 function Copy-LastOutput {
     try {
         $hist = Get-History
-        if (-not $hist) { Write-Host "[info] No history yet" -ForegroundColor DarkYellow; return }
+        if (-not $hist) { Write-Host '[info] Noch kein History-Eintrag' -ForegroundColor DarkYellow; return }
+
         $last   = $hist[-1].CommandLine
         $result = Invoke-Expression $last
+
         if (Test-HasCommand 'clip') {
             $result | clip
-            Write-Host "Output copied from: $last"
+            Write-Host "Output kopiert von: $last"
         } else {
-            Write-Host "[warn] 'clip' not found" -ForegroundColor Yellow
+            Write-Host "[warn] 'clip' nicht gefunden" -ForegroundColor Yellow
         }
     } catch {
-        Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "Fehler: $($_.Exception.Message)" -ForegroundColor Red
     }
 }
 
-# Bind Alt+c to Copy-LastOutput if PSReadLine is available
+# Alt+c → Copy-LastOutput (nur wenn PSReadLine verfügbar)
 if (Get-Module PSReadLine -ErrorAction SilentlyContinue) {
-    try { Set-PSReadLineKeyHandler -Key Alt+c -ScriptBlock { Copy-LastOutput } } catch { }
+    try { Set-PSReadLineKeyHandler -Key 'Alt+c' -ScriptBlock { Copy-LastOutput } } catch { }
 }
+#endregion
 
-# ==============================================================================
-# File system helpers
-# ==============================================================================
+#region ── Dateisystem ────────────────────────────────────────────────────────
 
-# Open a file or directory in Windows Explorer
+# Open-Explorer : Datei oder Verzeichnis im Windows Explorer öffnen
 function Open-Explorer {
     param([string]$Path = '.')
-    if (-not (Test-Path $Path)) { Write-Host "Not found: $Path" -ForegroundColor Red; return }
+
+    if (-not (Test-Path $Path)) { Write-Host "Nicht gefunden: $Path" -ForegroundColor Red; return }
+
+    if (-not $IsWindows) { Write-Host '[error] Open-Explorer ist Windows-only' -ForegroundColor Red; return }
+
     $full = (Resolve-Path $Path).Path
     if (Test-Path $full -PathType Leaf) { Start-Process explorer.exe "/select,`"$full`"" }
     else                                { Start-Process explorer.exe "`"$full`"" }
 }
 
-# Create a symbolic link; falls back to mklink via elevated cmd on access errors
+# New-Symlink : Symbolischen Link erstellen; Fallback auf mklink bei Zugriffsfehler
 function New-Symlink {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$Source,
         [Parameter(Mandatory)][string]$Target
     )
-    if (-not (Test-Path $Source)) { Write-Host "Source not found: $Source" -ForegroundColor Red; return }
+
+    if (-not (Test-Path $Source)) { Write-Host "Quelle nicht gefunden: $Source" -ForegroundColor Red; return }
+
     $resolvedSrc  = (Resolve-Path $Source).Path
     $targetParent = Split-Path $Target -Parent
     if ($targetParent -and -not (Test-Path $targetParent)) {
         New-Item -ItemType Directory -Path $targetParent | Out-Null
     }
+
     $isDir = Test-Path $resolvedSrc -PathType Container
     try {
         New-Item -ItemType SymbolicLink -Path $Target -Target $resolvedSrc -Force | Out-Null
-        Write-Host "Symlink created: $Target -> $resolvedSrc"
+        Write-Host "Symlink erstellt: $Target -> $resolvedSrc"
     } catch {
         $flag    = if ($isDir) { '/D' } else { '' }
         $cmdline = "/c mklink $flag `"$Target`" `"$resolvedSrc`""
         try {
             Start-Process cmd.exe -ArgumentList $cmdline -Verb RunAs -WindowStyle Hidden
-            Write-Host "Symlink created via mklink: $Target -> $resolvedSrc"
+            Write-Host "Symlink via mklink erstellt: $Target -> $resolvedSrc"
         } catch {
-            Write-Host "Failed: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "Fehler: $($_.Exception.Message)" -ForegroundColor Red
         }
     }
 }
 
-# Count files recursively
+# countfiles : Dateien rekursiv zählen
 function countfiles {
     [CmdletBinding()]
     param([Parameter(Position = 0)][string]$Path = '.')
+
     try {
         (Get-ChildItem -Path $Path -Recurse -File -Force -ErrorAction SilentlyContinue |
             Measure-Object).Count
     } catch { Write-Error $_ }
 }
 
-# o: Öffne Dateien oder Ordner mit der Standard-App (Ersatz für o.cmd)
+# o : Datei oder Verzeichnis mit Standard-App öffnen
 function o {
     [CmdletBinding()]
     param(
-        [Parameter(Position = 0, ValueFromPipeline = $true)]
-        [string]$Path = '.'
+        [Parameter(Position = 0, ValueFromPipeline)][string]$Path = '.'
     )
     process {
-        # Falls nichts übergeben wurde oder ein leerer String
         if ([string]::IsNullOrWhiteSpace($Path)) { $Path = '.' }
-
-        try {
-            # Startet die Datei/Ordner mit der Windows-Standardanwendung
-            Start-Process -FilePath $Path
-        } catch {
-            Write-Error "Datei oder Verzeichnis konnte nicht geöffnet werden: $_"
-        }
+        try { Start-Process -FilePath $Path }
+        catch { Write-Error "Konnte nicht geöffnet werden: $_" }
     }
 }
-# ==============================================================================
-# Elevation helpers
-# ==============================================================================
+#endregion
 
+#region ── Elevation ──────────────────────────────────────────────────────────
+
+# Elevate-Shell : Neue erhöhte Shell mit der aktuellen PS-Version
 function Elevate-Shell {
-    Start-Process -Verb RunAs -FilePath 'powershell.exe'
+    if (-not $IsWindows) { Write-Host '[error] Elevation ist Windows-only' -ForegroundColor Red; return }
+    # Nutzt den Pfad des laufenden Prozesses – funktioniert für pwsh.exe und powershell.exe
+    $exe = (Get-Process -Id $PID).MainModule.FileName
+    Start-Process -Verb RunAs -FilePath $exe
 }
 
+# Elevate-StarshipShell : Erhöhte Shell ohne separates Starship-Argument
+# (Profil wird automatisch geladen, Starship initialisiert sich selbst)
 function Elevate-StarshipShell {
-    Start-Process -Verb RunAs -FilePath 'powershell.exe' `
-        -ArgumentList '-NoExit', '-Command', $PROFILE
+    if (-not $IsWindows) { Write-Host '[error] Elevation ist Windows-only' -ForegroundColor Red; return }
+    $exe = (Get-Process -Id $PID).MainModule.FileName
+    Start-Process -Verb RunAs -FilePath $exe -ArgumentList '-NoExit'
 }
+#endregion
 
-# ==============================================================================
-# Enhanced external command wrappers
-# ==============================================================================
+#region ── External-Command-Wrapper ───────────────────────────────────────────
 
-# ls: prefer Unix ls (from Git for Windows / WSL), fall back to Get-ChildItem
+# ls : Unix-ls bevorzugt (Git for Windows / WSL), Fallback auf Get-ChildItem.
+#      $script:_lsExe wird einmalig beim Modul-Import gesetzt (Modul-Init-Region).
 function ls {
-    $lsCmd = Get-Command -Name 'ls.exe' -ErrorAction SilentlyContinue
-    if (-not $lsCmd) {
-        $lsCmd = Get-Command -Name 'ls' -CommandType Application -ErrorAction SilentlyContinue
-    }
-    if ($lsCmd) { & $lsCmd.Source --color=auto --hyperlink @args }
-    else        { Get-ChildItem @args }
+    if ($script:_lsExe) { & $script:_lsExe.Source --color=auto --hyperlink @args }
+    else                 { Get-ChildItem @args }
 }
 
-# rgrep: ripgrep wrapper with kitty hyperlinks
+# rgrep : ripgrep mit kitty-Hyperlinks
 function rgrep {
     if (Test-HasCommand 'rg') { & rg --hyperlink-format=kitty @args }
-    else { Write-Host "[error] ripgrep (rg) not found" -ForegroundColor Red }
+    else { Write-Host '[error] ripgrep (rg) nicht gefunden' -ForegroundColor Red }
 }
 
-# delta: diff pager with hyperlinks
+# delta : Diff-Pager mit Hyperlinks
 function delta {
     if (Test-HasCommand 'delta') {
-        & delta --hyperlinks --hyperlinks-file-link-format="file://{path}#{line}" @args
+        & delta --hyperlinks --hyperlinks-file-link-format='file://{path}#{line}' @args
     } else {
-        Write-Host "[error] delta not found" -ForegroundColor Red
+        Write-Host '[error] delta nicht gefunden' -ForegroundColor Red
     }
 }
+#endregion
 
-# ==============================================================================
-# Search
-# ==============================================================================
+#region ── Suche ──────────────────────────────────────────────────────────────
 
-# gg: recursive text search (uses Select-String; skips common binary extensions)
+# gg : Rekursive Textsuche.
+#      Wenn rg (ripgrep) verfügbar ist, wird es delegiert – deutlich schneller
+#      als Select-String bei großen Verzeichnissen.
 function gg {
     [CmdletBinding()]
     param(
@@ -268,20 +298,30 @@ function gg {
         [string[]]$ExcludeExtensions
     )
 
-    # Default binary extension skip-list
+    # Wenn rg verfügbar: delegieren (wesentlich schneller als Select-String)
+    if (Test-HasCommand 'rg') {
+        $rgArgs = @('--color', 'auto')
+        if ($Fixed)  { $rgArgs += '--fixed-strings' }
+        if ($Path)   { $rgArgs += $Path }
+        $rgArgs += $Pattern
+        & rg @rgArgs
+        return
+    }
+
+    # Fallback: Select-String (PS-native, langsamer bei großen Bäumen)
     if (-not $ExcludeExtensions) {
         $ExcludeExtensions = [string[]]@(
-            'png','jpg','jpeg','gif','bmp','ico','svg','pdf',
-            'zip','gz','tgz','bz2','xz','7z','rar',
-            'exe','dll','so','dylib','bin','obj','class','o','a',
+            'png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'svg', 'pdf',
+            'zip', 'gz',  'tgz', 'bz2', 'xz',  '7z',  'rar',
+            'exe', 'dll', 'so',  'dylib','bin',  'obj', 'class', 'o', 'a',
             'woff','woff2','ttf','otf',
-            'mp3','wav','flac','mp4','mkv','avi','mov','webm','iso','psd'
+            'mp3', 'wav', 'flac','mp4', 'mkv',  'avi', 'mov', 'webm', 'iso', 'psd'
         )
     }
 
     $files = Get-ChildItem -Path $Path -Recurse -File -Force -ErrorAction SilentlyContinue |
         Where-Object {
-            $ext = ($_.Extension -replace '^\.', '').ToLowerInvariant()
+            $ext = ($_.Extension -replace '^\.',  '').ToLowerInvariant()
             $ExcludeExtensions -notcontains $ext
         }
 
@@ -297,12 +337,11 @@ function gg {
 
     Select-String @ssArgs
 }
+#endregion
 
-# ==============================================================================
-# Network helpers
-# ==============================================================================
+#region ── Netzwerk ───────────────────────────────────────────────────────────
 
-# myip: show local IPv4 and public IP address
+# myip : Lokale IPv4 + öffentliche IP anzeigen
 function myip {
     [CmdletBinding()]
     param()
@@ -320,13 +359,6 @@ function myip {
 
     if (-not $local) { $local = '(none)' }
 
-    # Ensure TLS 1.2 for older Windows PowerShell
-    $prevProto = [Net.ServicePointManager]::SecurityProtocol
-    try {
-        [Net.ServicePointManager]::SecurityProtocol =
-            $prevProto -bor [Net.SecurityProtocolType]::Tls12
-    } catch { }
-
     $public    = $null
     $endpoints = [string[]]@(
         'https://ifconfig.me/ip',
@@ -340,38 +372,35 @@ function myip {
             if ($candidate -match '^\d{1,3}(\.\d{1,3}){3}$') { $public = $candidate; break }
         } catch { continue }
     }
-    if (-not $public) { $public = '(unavailable)' }
+    if (-not $public) { $public = '(nicht erreichbar)' }
 
-    [Console]::WriteLine('Local:  {0}' -f $local)
-    [Console]::WriteLine('Public: {0}' -f $public)
-
-    try { [Net.ServicePointManager]::SecurityProtocol = $prevProto } catch { }
+    [Console]::WriteLine('Lokal:     {0}', $local)
+    [Console]::WriteLine('Öffentlich:{0}', $public)
 }
+#endregion
 
-# ==============================================================================
-# Web server helper
-# ==============================================================================
+#region ── Web-Server ─────────────────────────────────────────────────────────
 
-# pythonserver: start a Python HTTP server on the given port
+# pythonserver : Python-HTTP-Server auf gegebenem Port starten
 function pythonserver {
     [CmdletBinding()]
-    param(
-        [Parameter(Position = 0)][ValidateRange(1, 65535)][int]$Port = 8000
-    )
+    param([Parameter(Position = 0)][ValidateRange(1, 65535)][int]$Port = 8000)
+
     $python = $null
     foreach ($c in @('py', 'python3', 'python')) {
         $cmd = Get-Command $c -ErrorAction SilentlyContinue
         if ($cmd) { $python = $cmd.Source; break }
     }
     if (-not $python) {
-        Write-Error 'No Python interpreter found. Ensure python is on PATH.'
+        Write-Error 'Kein Python-Interpreter gefunden. Sicherstellen, dass python im PATH ist.'
         return
     }
-    Write-Host ('Serving on http://localhost:{0}' -f $Port)
+    Write-Host ('Server läuft auf http://localhost:{0}' -f $Port)
     & $python -m http.server $Port
 }
+#endregion
 
 # ==============================================================================
-# Module export
+# Export
 # ==============================================================================
 Export-ModuleMember -Function * -Alias *
