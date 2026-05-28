@@ -18,7 +18,8 @@ local function configure_windows_shell(Config)
   local function exists(path)
     local f = io.open(path, "rb")
     if f then f:close(); return true end
-    return false
+    local matches = wezterm.glob(path)
+    return matches and #matches > 0
   end
 
   -- Common absolute paths to try (64-bit locations).

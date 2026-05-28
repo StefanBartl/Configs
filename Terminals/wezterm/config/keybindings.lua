@@ -64,6 +64,11 @@ return function(Config)
 			mods = "CTRL|SHIFT|ALT",
 			action = wezterm.action.CloseCurrentPane({ confirm = true }),
 		},
+		{
+			key = "L",
+			mods = "CTRL|SHIFT",
+			action = wezterm.action.ShowLauncher,
+		},
 	}
 
 	-- Workaround (windows)

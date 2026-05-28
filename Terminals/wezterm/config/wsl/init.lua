@@ -12,24 +12,30 @@ return function(Config)
     {
       --- Display name in the launcher and internal domain ID
       name = "WSL:Ubuntu",
+
       --- WSL distribution name (must match `wsl.exe -l`)
       distribution = "Ubuntu",
+
+      --- Default username to log in as
       username = "weltschmerz",
+
+      --- Default working directory when launching
       default_cwd = "~",
+
       --- Launch command, e.g. bash with login and interactive flags
       default_prog = { "bash", "-i", "-l" },
     },
-    -- {
-      -- name = "WSL:Alpine",
-      -- distribution = "Alpine",
-      -- username = "weltschmerz",
-      -- default_cwd = "/home/weltschmerz",
-      -- -- default_prog not set → fallback to distro default
-    -- },
+    {
+      name = "WSL:Alpine",
+      distribution = "Alpine",
+      username = "weltschmerz",
+      default_cwd = "/home/weltschmerz",
+      -- default_prog not set → fallback to distro default
+    },
     {
       name = "WSL:Arch",
-      distribution = "archlinux",
-      username = "StefanBartl",
+      distribution = "archlinux",          -- MUSS exakt mit dem Namen aus `wsl --list` übereinstimmen
+      username = "StefanBartl",            -- Falls dein User dort auch so heißt, ansonsten anpassen
       default_cwd = "~",
     },
   }
