@@ -10,6 +10,8 @@
 #
 # ==============================================================================
 
+Set-Location "C:\Users\StefanBartl\OneDrive - TRICENTIS\"
+
 #region ── 0. Lokaler Modul-Pfad (Performance-kritisch) ──────────────────────
 # Trägt einen lokalen Pfad (nie OneDrive) vorne in $PSModulePath ein.
 # Dadurch findet Import-Module MyCliHelpers die Local-Junction statt des
