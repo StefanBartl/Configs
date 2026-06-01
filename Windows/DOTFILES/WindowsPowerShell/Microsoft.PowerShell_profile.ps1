@@ -11,6 +11,7 @@
 # ==============================================================================
 
 # Set-Location "C:\Users\StefanBartl\OneDrive - TRICENTIS\"
+Remove-PSReadLineKeyHandler -Chord 'Ctrl+s'
 
 #region ── 0. Lokaler Modul-Pfad (Performance-kritisch) ──────────────────────
 # Trägt einen lokalen Pfad (nie OneDrive) vorne in $PSModulePath ein.
