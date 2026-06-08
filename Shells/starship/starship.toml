@@ -1,0 +1,48 @@
+# -----------------------------
+# Prompt Layout
+# -----------------------------
+format = """
+$custom.runtime $directory $git_branch $git_status
+$character"""
+
+# -----------------------------
+# Runtime indicator (sync with WezTerm)
+# -----------------------------
+[custom.runtime]
+command = """
+if [ -f /.dockerenv ]; then
+  echo "[DOCKER]"
+elif [ -f /run/.containerenv ]; then
+  echo "[PODMAN]"
+else
+  echo "[WSL]"
+fi
+"""
+when = "true"
+format = "[$output]($style) "
+style = "bold cyan"
+
+# -----------------------------
+# Directory
+# -----------------------------
+[directory]
+style = "bold yellow"
+truncate_to_repo = true
+truncation_length = 3
+
+# -----------------------------
+# Git
+# -----------------------------
+[git_branch]
+symbol = ""
+style = "bold purple"
+
+[git_status]
+style = "red"
+
+# -----------------------------
+# Prompt symbol
+# -----------------------------
+[character]
+success_symbol = ">"
+error_symbol = ">"
