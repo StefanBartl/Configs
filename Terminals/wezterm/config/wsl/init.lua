@@ -1,8 +1,6 @@
 ---@module 'config.wsl'
 ---@brief WSL domain configuration for WezTerm to enable launch targets via the launcher.
 
-require("@types.types")
-
 ---@param Config WezTerm.Config
 ---@return nil
 return function(Config)
@@ -12,16 +10,12 @@ return function(Config)
     {
       --- Display name in the launcher and internal domain ID
       name = "WSL:Ubuntu",
-
       --- WSL distribution name (must match `wsl.exe -l`)
       distribution = "Ubuntu",
-
       --- Default username to log in as
       username = "weltschmerz",
-
       --- Default working directory when launching
       default_cwd = "~",
-
       --- Launch command, e.g. bash with login and interactive flags
       default_prog = { "bash", "-i", "-l" },
     },
@@ -34,8 +28,8 @@ return function(Config)
     },
     {
       name = "WSL:Arch",
-      distribution = "archlinux",          -- MUSS exakt mit dem Namen aus `wsl --list` übereinstimmen
-      username = "StefanBartl",            -- Falls dein User dort auch so heißt, ansonsten anpassen
+      distribution = "archlinux",
+      username = "StefanBartl",
       default_cwd = "~",
     },
   }
