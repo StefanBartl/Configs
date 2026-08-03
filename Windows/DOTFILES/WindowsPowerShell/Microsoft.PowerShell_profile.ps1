@@ -130,11 +130,11 @@ $_psrl = Get-Module PSReadLine -ErrorAction SilentlyContinue
 if ($_psrl) {
     $psrlVer = $_psrl.Version
 
-    # Prediction-Source: HistoryAndPlugin erst ab 2.2 verfügbar
-    if ($psrlVer -ge [version]'2.2') {
+    # Prediction-Source: HistoryAndPlugin erfordert PSReadLine >= 2.2 UND PowerShell >= 7.2
+    if ($psrlVer -ge [version]'2.2' -and $PSVersionTable.PSVersion -ge [version]'7.2') {
         Set-PSReadLineOption -PredictionSource HistoryAndPlugin
         Set-PSReadLineOption -PredictionViewStyle ListView   # F2 wechselt Ansicht
-    } elseif ($psrlVer -ge [version]'2.1') {
+    } elseif ($psrlVer -ge [version]'2.1' -and $PSVersionTable.PSVersion -ge [version]'7.0') {
         Set-PSReadLineOption -PredictionSource History
     }
 

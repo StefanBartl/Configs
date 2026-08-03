@@ -40,6 +40,20 @@ return function(Config)
 			action = act.DisableDefaultAssignment,
 		},
 
+		-- WezTerm's builtin default binds plain CTRL+V to PasteFrom('Clipboard'),
+		-- which swallows the keystroke before it ever reaches the terminal app.
+		-- Neovim's own <C-v> (Visual Block mode) never sees it as a result.
+		-- act.DisableDefaultAssignment does NOT clear this specific builtin (it
+		-- still shows up in `wezterm show-keys --lua` afterwards, unlike e.g. the
+		-- CTRL+Tab disable above) -- so force the raw keystroke through instead
+		-- of asking wezterm to "not do the default". Paste stays available via
+		-- the explicit CTRL+SHIFT+V binding below (config/terminal_safety.lua).
+		{
+			key = "V",
+			mods = "CTRL",
+			action = act.SendKey({ key = "V", mods = "CTRL" }),
+		},
+
 		-- Unser Mapping: Event auslösen -> Handler spawnt und platziert Fenster
 		{
 			key = "n",
