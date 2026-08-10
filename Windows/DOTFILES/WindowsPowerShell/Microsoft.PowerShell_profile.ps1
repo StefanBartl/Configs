@@ -44,7 +44,7 @@ function Test-HasCommand {
         $wingetPath = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Links'
         if ((Test-Path $wingetPath) -and ($env:PATH -notlike "*$wingetPath*")) {
             $env:PATH = "$env:PATH;$wingetPath"
-            $found    = [bool](Get-Command -Name $Name -ErrorAction SilentlyContinue)
+            $found = [bool](Get-Command -Name $Name -ErrorAction SilentlyContinue)
         }
     }
 
@@ -71,8 +71,8 @@ function Update-InitCache {
     if (-not (Test-Path $dir)) { $null = New-Item -ItemType Directory -Path $dir -Force }
 
     $isStale = (-not (Test-Path $CachePath)) -or
-               ((Get-Item $CachePath -ErrorAction SilentlyContinue).LastWriteTime `
-                -lt (Get-Date).AddDays(-$MaxAgeDays))
+    ((Get-Item $CachePath -ErrorAction SilentlyContinue).LastWriteTime `
+        -lt (Get-Date).AddDays(-$MaxAgeDays))
 
     if ($isStale) {
         $lines = & $InitBlock
@@ -99,10 +99,12 @@ if (Test-HasCommand 'starship') {
         Update-InitCache `
             -CachePath (Join-Path $_cacheBase 'starship_init.ps1') `
             -InitBlock { & starship init powershell }
-    } catch {
+    }
+    catch {
         Write-Host "[warn] starship init fehlgeschlagen: $($_.Exception.Message)" -ForegroundColor Yellow
     }
-} else {
+}
+else {
     Write-Host '[info] starship nicht gefunden – winget install Starship.Starship' -ForegroundColor DarkYellow
 }
 #endregion
@@ -113,10 +115,12 @@ if (Test-HasCommand 'zoxide') {
         Update-InitCache `
             -CachePath (Join-Path $_cacheBase 'zoxide_init.ps1') `
             -InitBlock { & zoxide init powershell --hook prompt }
-    } catch {
+    }
+    catch {
         Write-Host "[warn] zoxide init fehlgeschlagen: $($_.Exception.Message)" -ForegroundColor Yellow
     }
-} else {
+}
+else {
     Write-Host '[info] zoxide nicht gefunden – winget install ajeetdsouza.zoxide' -ForegroundColor DarkYellow
 }
 
@@ -134,7 +138,8 @@ if ($_psrl) {
     if ($psrlVer -ge [version]'2.2' -and $PSVersionTable.PSVersion -ge [version]'7.2') {
         Set-PSReadLineOption -PredictionSource HistoryAndPlugin
         Set-PSReadLineOption -PredictionViewStyle ListView   # F2 wechselt Ansicht
-    } elseif ($psrlVer -ge [version]'2.1' -and $PSVersionTable.PSVersion -ge [version]'7.0') {
+    }
+    elseif ($psrlVer -ge [version]'2.1' -and $PSVersionTable.PSVersion -ge [version]'7.0') {
         Set-PSReadLineOption -PredictionSource History
     }
 
@@ -158,6 +163,23 @@ $env:LESS = '-R'
 Import-Module MyCliHelpers -ErrorAction SilentlyContinue -DisableNameChecking
 #endregion
 
+#region ── 8. Update-WindowsApps-Modul ────────────────────────────────────────
+# Liegt als lose .psm1-Datei neben dem Profil, nicht in einem eigenen
+# Modul-Unterordner (Modules\Update-WindowsApps\Update-WindowsApps.psm1),
+# daher expliziter Pfad statt Import-Module per Namen über $PSModulePath.
+# $PSScriptRoot zeigt zur Laufzeit auf das Verzeichnis dieser Profildatei
+# und funktioniert damit unverändert sowohl im Repo als auch nach dem
+# Kopieren durch install-DOTFILES.ps1 in das echte PowerShell-Profilverzeichnis.
+$UpdateWindowsAppsModule = Join-Path $PSScriptRoot 'Modules\Update-WindowsApps.psm1'
+if (Test-Path $UpdateWindowsAppsModule) {
+    Import-Module $UpdateWindowsAppsModule -ErrorAction SilentlyContinue
+}
+else {
+    Write-Host '[info] Update-WindowsApps.psm1 nicht gefunden – übersprungen' -ForegroundColor DarkYellow
+}
+Remove-Variable -Name UpdateWindowsAppsModule -ErrorAction SilentlyContinue
+#endregion
+
 # Import the Chocolatey Profile that contains the necessary code to enable
 # tab-completions to function for `choco`.
 # Be aware that if you are missing these lines from your profile, tab completion
@@ -165,5 +187,5 @@ Import-Module MyCliHelpers -ErrorAction SilentlyContinue -DisableNameChecking
 # See https://ch0.co/tab-completion for details.
 $ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
 if (Test-Path($ChocolateyProfile)) {
-  Import-Module "$ChocolateyProfile"
+    Import-Module "$ChocolateyProfile"
 }
