@@ -158,6 +158,17 @@ $env:LESS = '-R'
 Import-Module MyCliHelpers -ErrorAction SilentlyContinue -DisableNameChecking
 #endregion
 
+#region ── 8. casedesk: Case-Session-Kurzform ────────────────────────────────
+# `case 1007631` springt direkt in die gespeicherte Session dieses Cases.
+# Ohne Nummer: normales `nvim` (autoload = true in sessions.nvim lädt dann
+# ohnehin die zuletzt geladene Session). Siehe
+# docs/ROADMAP/casedesk/SESSIONS.md §4.2 im nvim-Config-Repo.
+function case {
+    param([string]$CaseNr)
+    if ($CaseNr) { nvim -c "Session load $CaseNr" } else { nvim }
+}
+#endregion
+
 # Import the Chocolatey Profile that contains the necessary code to enable
 # tab-completions to function for `choco`.
 # Be aware that if you are missing these lines from your profile, tab completion
