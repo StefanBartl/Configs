@@ -178,6 +178,16 @@ else {
     Write-Host '[info] Update-WindowsApps.psm1 nicht gefunden – übersprungen' -ForegroundColor DarkYellow
 }
 Remove-Variable -Name UpdateWindowsAppsModule -ErrorAction SilentlyContinue
+
+#region ── 9. casedesk: Case-Session-Kurzform ────────────────────────────────
+# `case 1007631` springt direkt in die gespeicherte Session dieses Cases.
+# Ohne Nummer: normales `nvim` (autoload = true in sessions.nvim lädt dann
+# ohnehin die zuletzt geladene Session). Siehe
+# docs/ROADMAP/casedesk/SESSIONS.md §4.2 im nvim-Config-Repo.
+function case {
+    param([string]$CaseNr)
+    if ($CaseNr) { nvim -c "Session load $CaseNr" } else { nvim }
+}
 #endregion
 
 # Import the Chocolatey Profile that contains the necessary code to enable
