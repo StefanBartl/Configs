@@ -164,20 +164,27 @@ Import-Module MyCliHelpers -ErrorAction SilentlyContinue -DisableNameChecking
 #endregion
 
 #region ── 8. Update-WindowsApps-Modul ────────────────────────────────────────
-# Liegt als lose .psm1-Datei neben dem Profil, nicht in einem eigenen
-# Modul-Unterordner (Modules\Update-WindowsApps\Update-WindowsApps.psm1),
-# daher expliziter Pfad statt Import-Module per Namen über $PSModulePath.
-# $PSScriptRoot zeigt zur Laufzeit auf das Verzeichnis dieser Profildatei
-# und funktioniert damit unverändert sowohl im Repo als auch nach dem
-# Kopieren durch install-DOTFILES.ps1 in das echte PowerShell-Profilverzeichnis.
-$UpdateWindowsAppsModule = Join-Path $PSScriptRoot 'Modules\Update-WindowsApps.psm1'
+# Robuste Pfadermittlung für den Ordner, in dem diese Profildatei liegt:
+$_profileDir = if ($PSScriptRoot) { 
+    $PSScriptRoot 
+} elseif ($PSCommandPath) { 
+    Split-Path -Parent $PSCommandPath 
+} else { 
+    Split-Path -Parent $PROFILE 
+}
+
+$UpdateWindowsAppsModule = Join-Path $_profileDir 'Modules\Update-WindowsApps.psm1'
+
 if (Test-Path $UpdateWindowsAppsModule) {
     Import-Module $UpdateWindowsAppsModule -ErrorAction SilentlyContinue
 }
 else {
-    Write-Host '[info] Update-WindowsApps.psm1 nicht gefunden – übersprungen' -ForegroundColor DarkYellow
+    # Debug-Hinweis: Zeigt dir exakt, wo PowerShell nach der Datei sucht
+    Write-Host "[info] Update-WindowsApps.psm1 nicht gefunden unter: '$UpdateWindowsAppsModule'" -ForegroundColor DarkYellow
 }
-Remove-Variable -Name UpdateWindowsAppsModule -ErrorAction SilentlyContinue
+
+Remove-Variable -Name _profileDir, UpdateWindowsAppsModule -ErrorAction SilentlyContinue
+#endregion
 
 #region ── 9. casedesk: Case-Session-Kurzform ────────────────────────────────
 # `case 1007631` springt direkt in die gespeicherte Session dieses Cases.
