@@ -6,10 +6,14 @@ die Dateien selbst bleiben im Repo.
 
 | Datei | Zweck |
 |---|---|
-| [`links.conf`](links.conf) | gemeinsames Link-Manifest (Quelle der Wahrheit) |
+| [`links.conf`](links.conf) | gemeinsames Manifest: Komponenten + Verknüpfungen (Quelle der Wahrheit) |
 | [`install.sh`](install.sh) | Linux / macOS / WSL |
 | [`install.ps1`](install.ps1) | Windows (PowerShell 5.1 und 7) |
 | [`wezterm-entry.lua`](wezterm-entry.lua) | Entry-Loader für WezTerm, siehe [terminals/wezterm/docs/EntryPoint.md](../terminals/wezterm/docs/EntryPoint.md) |
+
+> **Was der Installer nicht tut:** Programme installieren. Wählst du `kitty`,
+> wird `kitty.conf` verlinkt — kitty selbst bringt dein Paketmanager. Fehlt das
+> Programm im PATH, weist der Installer darauf hin und verlinkt trotzdem.
 
 ## Voraussetzung
 
@@ -18,33 +22,59 @@ enthält (z. B. `/mnt/e/repos` oder `E:\repos`). Die Installer selbst brauchen
 die Variable nicht — sie arbeiten relativ zu ihrem eigenen Pfad —, aber der
 WezTerm-Loader und Teile von `my-zsh` schon.
 
-## Nutzung
+## Auf einer frischen Maschine
 
 ```bash
-./install/install.sh --dry-run
+git clone https://github.com/StefanBartl/Configs.git "$REPOS_DIR/Configs"
 ```
 
 ```bash
-./install/install.sh
+cd "$REPOS_DIR/Configs" && ./install/install.sh
 ```
 
-```bash
-pwsh -File .\install\install.ps1 -DryRun
+Ohne Argumente fragt der Installer, welche Komponenten er einrichten soll:
+
+```
+Verfuegbare Komponenten (Plattform: unix)
+
+   1) zsh        my-zsh als Submodul (shells/zsh) plus ~/.zshrc
+   2) bash       .bashrc und .bash_aliases
+   3) starship   Prompt-Konfiguration, von zsh UND pwsh geteilt
+   4) wezterm    Entry-Loader nach ~/.config/wezterm/wezterm.lua
+   5) kitty      kitty.conf (kitty nicht im PATH)
+   6) tmux       tmux.conf (tmux nicht im PATH)
+   7) lazygit    lazygit config.yml
+   8) glow       glow glow.yml
+
+Auswahl (Nummern oder Namen, Leer = alle, q = abbrechen):
 ```
 
-```bash
-pwsh -File .\install\install.ps1
-```
+Nummern und Namen sind mischbar, getrennt durch Leerzeichen oder Kommas.
+Die Liste zeigt nur, was auf der aktuellen Plattform überhaupt etwas tut —
+`pwsh` taucht unter Linux gar nicht erst auf.
 
-`--dry-run` / `-DryRun` zeigt nur an, was passieren würde.
+## Alle Aufrufarten
+
+| | Linux / macOS / WSL | Windows |
+|---|---|---|
+| interaktiv auswählen | `./install/install.sh` | `pwsh -File .\install\install.ps1` |
+| Komponenten anzeigen | `./install/install.sh --list` | `... -List` |
+| alles ohne Rückfrage | `./install/install.sh --all` | `... -All` |
+| nur bestimmte | `./install/install.sh --only wezterm,zsh` | `... -Only wezterm,pwsh` |
+| bestimmte auslassen | `./install/install.sh --skip glow` | `... -Skip glow` |
+| Trockenlauf | `./install/install.sh --dry-run` | `... -DryRun` |
+| Vorhandenes ersetzen | `./install/install.sh --force` | `... -Force` |
+
+Ohne interaktive Konsole (Pipe, CI, Provisioning-Skript) wird nicht gefragt,
+sondern alles ausgewählt — der Installer blockiert also nie auf eine Eingabe.
 
 Existiert am Ziel bereits eine **echte** Datei (kein Symlink), wird sie
 übersprungen. Mit `--force` / `-Force` wird sie nach
 `<ziel>.bak-<zeitstempel>` verschoben und dann verlinkt. Bestehende Symlinks
 werden immer ersetzt, ohne Rückfrage.
 
-Beide Installer initialisieren das `my-zsh`-Submodul unter `shells/zsh`, falls
-es noch nicht ausgecheckt ist.
+Das `my-zsh`-Submodul unter `shells/zsh` wird nur initialisiert, wenn die
+Komponente `zsh` gewählt ist.
 
 ## Verknüpfungsarten
 
@@ -65,13 +95,26 @@ Symlinks nicht erlaubt sind.
 
 ## Manifest erweitern
 
-Eine Zeile pro Verknüpfung, Felder durch Whitespace getrennt:
+`links.conf` kennt zwei Zeilentypen, unterschieden am ersten Feld.
+
+**Komponente anmelden** — nur nötig für einen neuen Namen:
 
 ```
-<platform>  <kind>  <source>  <target>
+component  <name>  <cmd|->  <beschreibung ...>
+```
+
+`cmd` ist das Programm, das diese Komponente konfiguriert (`-` wenn keines);
+fehlt es im PATH, gibt der Installer einen Hinweis aus. Die Beschreibung läuft
+bis Zeilenende und erscheint im Auswahlmenü.
+
+**Verknüpfung eintragen:**
+
+```
+<platform>  <component>  <kind>  <source>  <target>
 ```
 
 * `platform` — `unix`, `windows` oder `all`
+* `component` — Name aus der Registry
 * `kind` — `link` (Datei) oder `dir` (Verzeichnis)
 * `source` — Pfad relativ zur Repo-Wurzel
 * `target` — Zielpfad mit Tokens

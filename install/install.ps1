@@ -3,14 +3,28 @@
     Configs — Installer fuer Windows.
 
 .DESCRIPTION
-    Legt Verknuepfungen gemaess install/links.conf an (Zeilen mit Plattform
-    "windows" oder "all"). Gegenstueck: install/install.sh fuer Linux/macOS/WSL,
-    das dieselbe Manifestdatei liest.
+    Legt Verknuepfungen gemaess install/links.conf an. Gegenstueck:
+    install/install.sh fuer Linux/macOS/WSL, das dieselbe Manifestdatei liest.
+
+    Ohne Parameter werden die Komponenten interaktiv ausgewaehlt.
+    Configs verlinkt Konfiguration — es installiert keine Programme.
 
     Verknuepfungsstrategie (ohne Admin-Rechte lauffaehig):
       Verzeichnis : Junction (braucht nie Admin)
       Datei       : Symlink -> faellt auf Hardlink zurueck (gleiches Laufwerk,
                     kein Admin/Entwicklermodus noetig) -> zuletzt Kopie mit Warnung
+
+.PARAMETER List
+    Zeigt die verfuegbaren Komponenten an und beendet sich.
+
+.PARAMETER All
+    Waehlt alle Komponenten ohne Rueckfrage.
+
+.PARAMETER Only
+    Nur diese Komponenten installieren (Namen oder Nummern aus -List).
+
+.PARAMETER Skip
+    Diese Komponenten von der Auswahl ausnehmen.
 
 .PARAMETER DryRun
     Zeigt nur an, was passieren wuerde; aendert nichts.
@@ -20,12 +34,18 @@
     wird vorher nach <ziel>.bak-<zeitstempel> verschoben.
 
 .EXAMPLE
-    .\install\install.ps1 -DryRun
+    .\install\install.ps1 -List
 .EXAMPLE
-    .\install\install.ps1 -Force
+    .\install\install.ps1 -Only wezterm,pwsh -DryRun
+.EXAMPLE
+    .\install\install.ps1 -All -Skip glow -Force
 #>
 [CmdletBinding()]
 param(
+    [switch]$List,
+    [switch]$All,
+    [string[]]$Only,
+    [string[]]$Skip,
     [switch]$DryRun,
     [switch]$Force
 )
@@ -37,6 +57,7 @@ $ErrorActionPreference = 'Stop'
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot  = Split-Path -Parent $scriptDir
 $manifest  = Join-Path $scriptDir 'links.conf'
+$platform  = 'windows'
 
 if (-not (Test-Path -LiteralPath $manifest)) {
     Write-Error "Manifest nicht gefunden: $manifest"
@@ -58,9 +79,146 @@ function Write-Ok   { param([string]$Message) Write-Host "[ ok ] $Message" -Fore
 function Write-Warn { param([string]$Message) Write-Host "[warn] $Message" -ForegroundColor Yellow }
 function Write-Fail { param([string]$Message) Write-Host "[fail] $Message" -ForegroundColor Red }
 
+# --- Manifest einlesen ----------------------------------------------------
+
+function Read-ManifestLine {
+    # Gibt pro Nutzzeile die an Whitespace zerlegten Felder zurueck.
+    foreach ($rawLine in Get-Content -LiteralPath $manifest) {
+        $line = ($rawLine -replace '#.*$', '').Trim()
+        if (-not $line) { continue }
+        , ($line -split '\s+')
+    }
+}
+
+# Registry: Name -> @{ Cmd; Description }
+$registry = [ordered]@{}
+foreach ($fields in Read-ManifestLine) {
+    if ($fields[0] -ne 'component') { continue }
+    if ($fields.Count -lt 3) { continue }
+    $registry[$fields[1]] = @{
+        Cmd         = $fields[2]
+        Description = ($fields[3..($fields.Count - 1)] -join ' ')
+    }
+}
+
+# Verknuepfungszeilen dieser Plattform
+$entries = @()
+foreach ($fields in Read-ManifestLine) {
+    if ($fields[0] -eq 'component') { continue }
+    if ($fields.Count -lt 5) {
+        Write-Warn "Manifestzeile unvollstaendig, ignoriert: $($fields -join ' ')"
+        continue
+    }
+    if ($fields[0] -ne $platform -and $fields[0] -ne 'all') { continue }
+    $entries += [PSCustomObject]@{
+        Component      = $fields[1]
+        Kind           = $fields[2]
+        SourceRelative = $fields[3]
+        Target         = $fields[4]
+    }
+}
+
+# Komponenten, die auf dieser Plattform ueberhaupt Eintraege haben
+$available = @($registry.Keys | Where-Object { $entries.Component -contains $_ })
+
+if ($available.Count -eq 0) {
+    Write-Fail "Manifest enthaelt keine Komponenten fuer Plattform '$platform'"
+    exit 1
+}
+
+# --- Komponentenauswahl ---------------------------------------------------
+
+function Get-MissingCommand {
+    param([Parameter(Mandatory)][string]$Component)
+
+    $cmd = $registry[$Component].Cmd
+    if (-not $cmd -or $cmd -eq '-') { return $null }
+    if (Get-Command $cmd -ErrorAction SilentlyContinue) { return $null }
+    return $cmd
+}
+
+function Show-Components {
+    Write-Host "Verfuegbare Komponenten (Plattform: $platform)" -ForegroundColor White
+    Write-Host ''
+    for ($i = 0; $i -lt $available.Count; $i++) {
+        $name    = $available[$i]
+        $missing = Get-MissingCommand -Component $name
+        $line    = '  {0,2}) {1,-10} {2}' -f ($i + 1), $name, $registry[$name].Description
+        if ($missing) {
+            Write-Host $line -NoNewline
+            Write-Host " ($missing nicht im PATH)" -ForegroundColor Yellow
+        } else {
+            Write-Host $line
+        }
+    }
+    Write-Host ''
+}
+
+function Resolve-Selection {
+    # Nimmt Namen und/oder Nummern (auch komma-getrennt) und liefert Namen.
+    param([string[]]$Tokens)
+
+    $result = @()
+    foreach ($raw in $Tokens) {
+        foreach ($token in ($raw -split '[,\s]+' | Where-Object { $_ })) {
+            $index = 0
+            if ([int]::TryParse($token, [ref]$index)) {
+                if ($index -ge 1 -and $index -le $available.Count) {
+                    $result += $available[$index - 1]
+                } else {
+                    Write-Warn "Nummer ausserhalb der Liste, ignoriert: $token"
+                }
+            } elseif ($available -contains $token) {
+                $result += $token
+            } else {
+                Write-Warn "unbekannte Komponente, ignoriert: $token"
+            }
+        }
+    }
+    return $result
+}
+
+function Select-ComponentsInteractive {
+    Show-Components
+    $reply = Read-Host 'Auswahl (Nummern oder Namen, Leer = alle, q = abbrechen)'
+    if ($reply -eq 'q' -or $reply -eq 'Q') {
+        Write-Info 'abgebrochen'
+        exit 0
+    }
+    if (-not $reply.Trim()) { return @($available) }
+    return Resolve-Selection -Tokens @($reply)
+}
+
+if ($List) {
+    Show-Components
+    exit 0
+}
+
+if ($Only) {
+    $selected = Resolve-Selection -Tokens $Only
+} elseif ($All -or [Console]::IsInputRedirected) {
+    # Ohne interaktive Konsole (Pipe, CI) nicht blockierend nachfragen.
+    $selected = @($available)
+} else {
+    $selected = Select-ComponentsInteractive
+}
+
+if ($Skip) {
+    $skipNames = @($Skip | ForEach-Object { $_ -split '[,\s]+' } | Where-Object { $_ })
+    $selected  = @($selected | Where-Object { $skipNames -notcontains $_ })
+}
+
+$selected = @($selected | Select-Object -Unique)
+
+if ($selected.Count -eq 0) {
+    Write-Info 'keine Komponente ausgewaehlt — nichts zu tun'
+    exit 0
+}
+
 # --- Submodule (my-zsh unter shells/zsh) ----------------------------------
 
 function Initialize-Submodules {
+    if ($selected -notcontains 'zsh') { return }
     if (-not (Test-Path -LiteralPath (Join-Path $repoRoot '.gitmodules'))) { return }
     if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
         Write-Warn 'git nicht gefunden — Submodule uebersprungen'
@@ -73,7 +231,7 @@ function Initialize-Submodules {
         Write-Info '(dry-run) git submodule update --init --recursive'
         return
     }
-    Write-Info 'Initialisiere Submodule (shells/zsh -> my-zsh) ...'
+    Write-Info 'Initialisiere Submodul (shells/zsh -> my-zsh) ...'
     git -C $repoRoot submodule update --init --recursive
 }
 
@@ -207,26 +365,23 @@ function New-ConfigLink {
 
 # --- Ablauf ---------------------------------------------------------------
 
-Write-Info "Repo:     $repoRoot"
-Write-Info "Manifest: $manifest"
-if ($DryRun) { Write-Info 'Modus:    dry-run (es wird nichts geaendert)' }
+Write-Info "Repo:        $repoRoot"
+Write-Info "Manifest:    $manifest"
+Write-Info "Komponenten: $($selected -join ' ')"
+if ($DryRun) { Write-Info 'Modus:       dry-run (es wird nichts geaendert)' }
+
+foreach ($name in $selected) {
+    $missing = Get-MissingCommand -Component $name
+    if ($missing) {
+        Write-Info "Hinweis: '$missing' ist nicht im PATH — Config wird trotzdem verlinkt"
+    }
+}
 
 Initialize-Submodules
 
-foreach ($rawLine in Get-Content -LiteralPath $manifest) {
-    $line = ($rawLine -replace '#.*$', '').Trim()
-    if (-not $line) { continue }
-
-    $fields = $line -split '\s+'
-    if ($fields.Count -lt 4) {
-        Write-Warn "Manifestzeile unvollstaendig, ignoriert: $line"
-        continue
-    }
-
-    $platform = $fields[0]
-    if ($platform -ne 'windows' -and $platform -ne 'all') { continue }
-
-    New-ConfigLink -Kind $fields[1] -SourceRelative $fields[2] -Target (Expand-TargetPath $fields[3])
+foreach ($entry in $entries) {
+    if ($selected -notcontains $entry.Component) { continue }
+    New-ConfigLink -Kind $entry.Kind -SourceRelative $entry.SourceRelative -Target (Expand-TargetPath $entry.Target)
 }
 
 Write-Host ''
