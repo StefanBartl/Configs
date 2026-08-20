@@ -21,7 +21,7 @@
 | 10 | **`Get-Module PSReadLine` doppelt aufgerufen** | Im Profil zweimal abgefragt (Check + Version) | Einmal cachen in Variable |
 | 11 | **`$env:PSModulePath` kein Split-Check** | Pfad wird bei wiederholtem Laden doppelt eingetragen | Bereits vorhanden? `notlike`-Guard |
 | 12 | **install-DOTFILES.ps1: nur OneDrive-Pfad** | Modul-Junction landet auf OneDrive — triggert das Performance-Problem bei jedem Import | Lokaler Junction-Pfad als primäres Ziel |
-| 13 | **install-DOTFILES.ps1: Datei-Symlink ohne Admin scheitert** | `New-Item -ItemType SymbolicLink` für Dateien braucht Admin oder Developer Mode. `cmd /c mklink` ebenso | Loader-Script als Admin-freier Fallback |
+| 13 | ~~**install-DOTFILES.ps1: Datei-Symlink ohne Admin scheitert**~~ ✅ 2026-08-20 | `New-Item -ItemType SymbolicLink` für Dateien braucht Admin oder Developer Mode. `cmd /c mklink` ebenso | Gelöst in `install/install.ps1`: Verzeichnisse als Junction, Dateien Symlink → Hardlink → Kopie (Kopie wird gewarnt) |
 
 ## 🟢 DISKUTABEL (Architektur, Tools, Konzepte)
 
