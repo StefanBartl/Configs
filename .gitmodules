@@ -1,0 +1,3 @@
+[submodule "shells/zsh"]
+	path = shells/zsh
+	url = https://github.com/StefanBartl/my-zsh.git
