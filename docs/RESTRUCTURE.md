@@ -187,7 +187,7 @@ Configs/
 ├── containers/podman/nvim            (Podman-Containerfile)
 ├── scripts/                          (keepawake*.ps1, install-tools-win.ps1, pdf_zu_bilder.py)
 ├── editors/{vscodevim,vsvim}/
-└── docs/{ROADMAP.md,RESTRUCTURE.md}
+└── docs/{RESTRUCTURE.md,checklisten/}
 ```
 
 ### Begründung
@@ -448,3 +448,15 @@ Eine Regel ohne Vorfall wäre eine Vermutung und steht nicht drin.
 
 Die Gates wiederholen die Regeln nicht, sie verweisen per ID auf sie — eine
 Änderung an einer Regel muss deshalb an genau einer Stelle passieren.
+
+### `docs/ROADMAP.md` entfällt
+
+Die Datei enthielt drei Punkte, alle erledigt: die wezterm-Modularisierung
+(`terminals/wezterm/{config,utils,@types,color_schemes}` plus komponierende
+`init.lua`), die Restrukturierung (dieses Dokument) und die Regeln/Gates
+(oben). Eine Roadmap ohne offenen Punkt ist keine Roadmap, sondern eine
+zweite, schlechtere Zusammenfassung des bereits Dokumentierten — sie ist
+deshalb gelöscht statt leer stehengelassen. Tool-spezifische Roadmaps laufen
+weiter in ihrem eigenen Ordner ([`shells/pwsh/ROADMAP.md`](../shells/pwsh/ROADMAP.md),
+`shells/zsh`). Kommen wieder offene Punkte für das Repo als Ganzes, entsteht
+die Datei neu.
