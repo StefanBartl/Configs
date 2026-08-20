@@ -117,15 +117,34 @@ Merge ist die richtige Richtung — aber nicht in diesen Zustand hinein.
 
 ### Gewählt: Naht nach Lebenszyklus
 
-| Layer | Inhalt | Deployment | Ziel |
-|---|---|---|---|
-| **A — Dotfiles** | zsh, pwsh, wezterm, kitty, tmux, starship, bash, CLI-Tools | Symlink / Loader | 1 Repo, public, klein |
-| **B — Assets & Backups** | Fonts, VPN, iCue, Audio, Bookmarks, Software-Listen, Gaomon | wird nie verlinkt | privates Repo — oder gar nicht in Git |
-| **C — Eigenständige Projekte** | `OpenInNvim` (C#-App) | eigenes Build/Deploy | eigenes Repo |
-| **D — Secrets** | API-Keys, VPN-Schlüssel | Runtime-Load | nie in Git (`my-zsh`-Muster) |
+| Layer | Inhalt | Deployment | Ziel | Status |
+|---|---|---|---|---|
+| **A — Dotfiles** | zsh, pwsh, wezterm, kitty, tmux, starship, bash, CLI-Tools | Symlink / Loader | 1 Repo, public, klein | bleibt in `Configs`, Umbau offen (Abschnitt 3–4) |
+| **B — Assets & Backups** | Fonts, VPN, iCue, Audio, Bookmarks, Software-Listen, Gaomon | wird nie verlinkt | privates Repo | ✅ migriert nach [`StefanBartl/machine-assets`](https://github.com/StefanBartl/machine-assets) (privat), 2026-08-20 |
+| **C — Eigenständige Projekte** | `OpenInNvim` (C#-App) | eigenes Build/Deploy | eigenes Repo | ✅ migriert nach [`StefanBartl/open-in-nvim`](https://github.com/StefanBartl/open-in-nvim) (public), 2026-08-20 |
+| **D — Secrets** | API-Keys, VPN-Schlüssel | Runtime-Load | nie in Git (`my-zsh`-Muster) | ✅ erledigt, siehe Abschnitt 0 |
 
 Layer A ist exakt die Menge, die gemeinsam installiert wird und sich
 gegenseitig referenziert. Das ist die tragfähige Naht.
+
+### Migration Layer B/C — Details (2026-08-20)
+
+Beide neuen Repos wurden mit **frischer History** angelegt (ein Initial-Commit),
+nicht per `git filter-repo`-Subtree-Split — so bewusst entschieden, weil die
+alte `Configs`-History für diese Pfade ohnehin nur die (inzwischen entfernten)
+Secrets und unnötigen Ballast mitgeschleppt hätte.
+
+Bei der Migration von `Windows/Contextmenu/OpenInNvim/` fiel auf: `bin/`, `obj/`
+und `publish/*.exe` (zwei self-contained .NET-Singlefile-Exes, ~66 MB je Datei,
+zusammen ~214 MB) lagen zwar im Arbeitsverzeichnis, waren aber **nie
+Git-getrackt** (`git ls-files` liefert dafür nichts) — reiner lokaler
+Build-Output ohne Auswirkung auf die Repo-Größe. `open-in-nvim` hat jetzt ein
+`.gitignore` dafür, damit das so bleibt.
+
+`Configs` selbst wurde per `git rm` von `Fonts/`, `VPN/`, `Settings_Profiles/`,
+`docker-cred/` und `Windows/Contextmenu/OpenInNvim/` bereinigt. Die alten Inhalte
+bleiben bis Schritt 3 (History-Purge) in der `Configs`-Git-History erhalten —
+das ist der noch offene Schritt, der die Repo-Größe tatsächlich reduziert.
 
 ---
 
@@ -197,8 +216,8 @@ Profilstände, redundant zur Git-History) und entfällt beim Umbau ersatzlos.
 | # | Schritt | Voraussetzung |
 |---|---|---|
 | 1 | ~~Zugangsdaten rotieren (API-Key, WireGuard) + History-Purge~~ ✅ erledigt 2026-08-20 (Abschnitt 0) | — |
-| 2 | Layer B in privates Repo, Layer C in eigenes Repo auslagern | — |
-| 3 | History-Purge (`git filter-repo`): Fonts + `marksman.exe` + Force-Push (Größenreduktion) | 2 |
+| 2 | ~~Layer B in privates Repo, Layer C in eigenes Repo auslagern~~ ✅ erledigt 2026-08-20 (Abschnitt 2, Migration-Details) | — |
+| 3 | History-Purge (`git filter-repo`): Fonts + `marksman.exe` + die jetzt in Schritt 2 entfernten Layer-B/C-Pfade + Force-Push (Größenreduktion) | 2 |
 | 4 | Umbau auf Zielstruktur, `my-zsh` als Submodul einhängen | 3 |
 | 5 | `install.sh` + `install.ps1` vereinheitlichen | 4 |
 | 6 | Offene Punkte aus `Windows/DOTFILES/ROADMAP.md`: #8 hardcodierte Pfade, #13 Admin-freier Symlink-Fallback, #20 `Test-ProfileHealth` | 5 |
