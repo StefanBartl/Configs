@@ -38,19 +38,19 @@ für alle Plattformen.
 
 ---
 
-## 1. Ist-Zustand
+## 1. Ist-Zustand (Stand vor Schritt 1–3, siehe Historie unten für den aktuellen Stand)
 
 |  | `Configs` | `my-zsh` |
 |---|---|---|
 | Sichtbarkeit | public | public |
 | Getrackte Dateien | 115 | ~25 + 5 Submodule |
-| **Pack-Größe** | **89,7 MB** | klein |
+| **Pack-Größe** | **89,7 MB** → **2,0 MB** nach Schritt 3 (2026-08-20) | klein |
 | Commits | 71 | 32 |
 | Secret-Handling | im Repo committet | extern (`~/personel_env/`) |
 | Install | `install-DOTFILES.ps1` (nur pwsh) | `ln -sf`, in `INSTRUCTIONS.md` dokumentiert |
 | Fremdcode | vendored | Submodule |
 
-### Herkunft der 89,7 MB
+### Herkunft der 89,7 MB (historisch — per Schritt 3 vollständig gepurgt)
 
 ```
  25.72 MB  Fonts/OpenDyslexic.zip
@@ -217,7 +217,7 @@ Profilstände, redundant zur Git-History) und entfällt beim Umbau ersatzlos.
 |---|---|---|
 | 1 | ~~Zugangsdaten rotieren (API-Key, WireGuard) + History-Purge~~ ✅ erledigt 2026-08-20 (Abschnitt 0) | — |
 | 2 | ~~Layer B in privates Repo, Layer C in eigenes Repo auslagern~~ ✅ erledigt 2026-08-20 (Abschnitt 2, Migration-Details) | — |
-| 3 | History-Purge (`git filter-repo`): Fonts + `marksman.exe` + die jetzt in Schritt 2 entfernten Layer-B/C-Pfade + Force-Push (Größenreduktion) | 2 |
+| 3 | ~~History-Purge (`git filter-repo`): Fonts + `marksman.exe` + Layer-B/C-Pfade + Force-Push~~ ✅ erledigt 2026-08-20 — `.git` 90 MB → 2,0 MB (lokal + `origin/main` + `origin/main-unix`) | 2 |
 | 4 | Umbau auf Zielstruktur, `my-zsh` als Submodul einhängen | 3 |
 | 5 | `install.sh` + `install.ps1` vereinheitlichen | 4 |
 | 6 | Offene Punkte aus `Windows/DOTFILES/ROADMAP.md`: #8 hardcodierte Pfade, #13 Admin-freier Symlink-Fallback, #20 `Test-ProfileHealth` | 5 |
