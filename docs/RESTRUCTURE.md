@@ -278,16 +278,43 @@ unabhängig von den bereits gepurgten Zugangsdaten).
 
 Statt zwei Skripte mit je eigener, driftender Liste gibt es jetzt
 `install/links.conf` als einzige Quelle der Wahrheit — ein Eintrag pro
-Verknüpfung, plattformmarkiert (`unix` / `windows` / `all`), mit Tokens für die
-Zielpfade (`$HOME`, `$XDG_CONFIG`, `$APPDATA`, `$PS5`, `$PS7`).
+Verknüpfung, markiert mit Plattform (`unix` / `windows` / `all`) und Komponente
+(siehe unten), mit Tokens für die Zielpfade (`$HOME`, `$XDG_CONFIG`,
+`$APPDATA`, `$PS5`, `$PS7`).
 `install/install.sh` und `install/install.ps1` sind nur noch Ausführungs-
 maschinen dafür. Ein neuer Config-Pfad wird an einer Stelle eingetragen und gilt
 sofort für beide Plattformen. Details: [`install/README.md`](../install/README.md).
 
-Beide Installer bieten `--dry-run`/`-DryRun`, schützen vorhandene *echte*
+Beide Installer bieten `--dry-run`/`-DryRun` und schützen vorhandene *echte*
 Dateien am Ziel (nur mit `--force`/`-Force` ersetzt, dann mit Backup nach
-`<ziel>.bak-<zeitstempel>`) und initialisieren das `my-zsh`-Submodul unter
-`shells/zsh`, falls es noch nicht ausgecheckt ist.
+`<ziel>.bak-<zeitstempel>`).
+
+### Komponentenauswahl
+
+Das Manifest hat neben der Plattform eine zweite Dimension: die **Komponente**
+(`zsh`, `bash`, `pwsh`, `starship`, `wezterm`, `kitty`, `tmux`, `lazygit`,
+`glow`). "Auf dieser Maschine nur wezterm und pwsh" ist damit ein Filter über
+dieselbe Liste, kein zweites Skript:
+
+```
+./install/install.sh                     # interaktiv auswählen
+./install/install.sh --only wezterm,zsh  # für Provisioning
+./install/install.sh --list              # nur anzeigen
+```
+
+Angezeigt wird nur, was auf der laufenden Plattform überhaupt Einträge hat —
+`pwsh` erscheint unter Linux nicht. Ohne interaktive Konsole (Pipe, CI) wird
+nicht gefragt, sondern alles gewählt; der Installer blockiert also nie.
+
+Zwei Konsequenzen aus dem Komponentenmodell:
+
+* Das `my-zsh`-Submodul wird nur noch initialisiert, wenn `zsh` gewählt ist.
+  Eine Windows-Maschine ohne zsh klont es gar nicht erst.
+* Die Registry führt pro Komponente das zugehörige Programm. Fehlt es im PATH,
+  gibt es einen Hinweis, aber keinen Abbruch — **Configs verlinkt
+  Konfiguration, es installiert keine Programme.** Diese Grenze ist bewusst:
+  Paketinstallation ist Sache des jeweiligen Paketmanagers (siehe
+  `scripts/install-tools-win.ps1` für den Windows-Teil).
 
 Weiter offen bleibt `shells/pwsh/ROADMAP.md` #12: `install.ps1` bestimmt das
 Profilverzeichnis weiterhin über `[Environment]::GetFolderPath('MyDocuments')`
