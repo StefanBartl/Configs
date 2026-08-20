@@ -1,6 +1,6 @@
 # Restrukturierung `Configs` — Analyse & Plan
 
-> **Status:** Schritte 1–5 umgesetzt, offen ist nur noch Schritt 6 (Abschnitt 5)
+> **Status:** Schritte 1–6 umgesetzt; offen ist nur noch der nachgelagerte Punkt (Abschnitt 8)
 > **Stand:** 2026-08-20
 > **Ausgangsfrage:** Eigenes Repo für pwsh/wezterm (analog `my-zsh`), oder alles
 > in ein Repo zusammenführen?
@@ -264,8 +264,8 @@ Workaround: zweistufig über einen Zwischennamen —
 | 2 | ~~Layer B in privates Repo, Layer C in eigenes Repo auslagern~~ ✅ erledigt 2026-08-20 (Abschnitt 2, Migration-Details) | — |
 | 3 | ~~History-Purge (`git filter-repo`): Fonts + `marksman.exe` + Layer-B/C-Pfade + Force-Push~~ ✅ erledigt 2026-08-20 — `.git` 90 MB → 2,0 MB (lokal + `origin/main` + `origin/main-unix`) | 2 |
 | 4 | ~~Umbau auf Zielstruktur, `my-zsh` als Submodul einhängen~~ ✅ erledigt 2026-08-20, siehe "Umbau durchgeführt" oben | 3 |
-| 5 | ~~`install.sh` + `install.ps1` vereinheitlichen (inkl. Fix für `~/.config/wezterm/wezterm.lua` auf betroffenen Maschinen)~~ ✅ erledigt 2026-08-20, siehe Abschnitt 7 | 4 |
-| 6 | Offene Punkte aus `shells/pwsh/ROADMAP.md`: #8 hardcodierte Pfade, ~~#13 Admin-freier Symlink-Fallback~~ (mit Schritt 5 erledigt), #20 `Test-ProfileHealth` | 5 |
+| 5 | ~~`install.sh` + `install.ps1` vereinheitlichen (inkl. Fix für `~/.config/wezterm/wezterm.lua` auf betroffenen Maschinen)~~ ✅ erledigt 2026-08-20, siehe Abschnitt 6 | 4 |
+| 6 | ~~Offene Punkte aus `shells/pwsh/ROADMAP.md`~~ ✅ erledigt 2026-08-20 — alle 22 offenen Punkte abgearbeitet, zwei nach Messung verworfen; siehe Abschnitt 7 | 5 |
 
 Schritt 3 reduziert das Repo zusätzlich von 89,7 MB auf wenige MB (Fonts/Binary,
 unabhängig von den bereits gepurgten Zugangsdaten).
@@ -369,7 +369,50 @@ Pinnen eines Commits rät. Für sechs Zeilen ist das der schlechtere Tausch —
 
 ---
 
-## 7. Nachgelagert
+## 7. Schritt 6 durchgeführt (2026-08-20)
+
+Die Liste in `shells/pwsh/ROADMAP.md` war zum Teil bereits im Code umgesetzt,
+aber nicht abgehakt. Erste Arbeit war daher, jeden Punkt gegen den Code zu
+prüfen; danach blieben die wirklich offenen übrig. Alle 22 sind jetzt
+abgearbeitet, die Roadmap führt pro Punkt das Ergebnis.
+
+**Neu dazugekommen ist ein Diagnosewerkzeug:** `Test-ProfileHealth` (Alias
+`checkhealth`, ROADMAP #20) prüft Tools, `REPOS_DIR`, PSReadLine, Modulpfad,
+Profil-Verknüpfung und Init-Cache und nennt zu jedem Fehlschlag den
+Reparaturbefehl. `-Quiet` liefert Objekte statt Text.
+
+Es hat beim ersten Lauf gleich zwei echte Nachwirkungen von Schritt 4 gefunden:
+`$PROFILE` und die Modul-Junction auf dieser Maschine zeigen noch auf
+`Configs\Windows\DOTFILES\...`, also ins Leere. Genau die Klasse Fehler, die
+sonst erst auffällt, wenn Funktionen unerklärlich fehlen. Behoben wird sie mit
+`install\install.ps1 -Only pwsh -Force`.
+
+### Zwei bewusste Abweichungen
+
+* **ROADMAP #3** notierte `scan_timeout = 30000`. Umgesetzt ist `1000`. Der
+  Wert ist eine Obergrenze, keine Wartezeit: 30000 hieße, dass der Prompt bei
+  einem hängenden Dateisystem (Netzlaufwerk, schlafende Platte) bis zu 30
+  Sekunden blockiert. 1000 ms lösen das eigentliche Problem — große Repos —
+  und begrenzen den schlimmsten Fall auf eine Sekunde.
+* **ROADMAP #16/#17** (Lazy-Loading, Aufteilung in Sub-Module) sind verworfen,
+  nicht vergessen. Gemessen kostet `Import-Module MyCliHelpers` 13 ms warm und
+  65 ms kalt. Stub-Funktionen könnten davon einen Bruchteil sparen und würden
+  jeden Aufruf mit einer Indirektion belasten. Bei deutlichem Wachstum des
+  Moduls neu zu bewerten.
+
+### Sicherheitsrelevant: `Copy-LastOutput`
+
+PowerShell speichert in der History nur die Kommandozeile, nie deren Ausgabe.
+"Output kopieren" hieß deshalb: den letzten Befehl per `Invoke-Expression`
+**nochmal ausführen** — und das lag auf `Alt+c`. Bei `git push`, `rm` oder
+einem POST-Request passierte die Wirkung damit ein zweites Mal, auf einen
+Tastendruck hin. Jetzt führt die Funktion nur mit explizitem `-Rerun` etwas
+aus; `Alt+c` liegt auf dem neuen `Copy-LastCommand`, das ausschließlich Text
+kopiert.
+
+---
+
+## 8. Nachgelagert
 
 Übertragung der Checklisten- und Gate-Systematik aus
 `WKDBooks/Development/wkdbook-Lua/Checklists` (`KONZEPT.md`, `WORKFLOW.md`,
