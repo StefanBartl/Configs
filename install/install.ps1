@@ -16,7 +16,7 @@ if (-not $env:REPOS_DIR) {
 }
 
 # 2. Quellpfade im Repository definieren (Die echten Dateien)
-$repoDotfilesDir       = Join-Path $env:REPOS_DIR "Configs\Windows\DOTFILES\WindowsPowerShell"
+$repoDotfilesDir       = Join-Path $env:REPOS_DIR "Configs\shells\pwsh"
 $srcProfile            = Join-Path $repoDotfilesDir "Microsoft.PowerShell_profile.ps1"
 $srcModuleDir          = Join-Path $repoDotfilesDir "Modules\MyCliHelpers"
 $srcUpdateWindowsApps  = Join-Path $repoDotfilesDir "Modules\Update-WindowsApps.psm1"

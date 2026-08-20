@@ -171,6 +171,25 @@ machine-assets/            (PRIVAT — Fonts, VPN, iCue, Bookmarks, Audio)
 open-in-nvim/              (eigenes Repo — die C#-Anwendung)
 ```
 
+### Tatsächlich umgesetzt (Schritt 4, 2026-08-20)
+
+Die Skizze oben deckte nicht alle 115 damals getrackten Dateien ab. Reale
+Struktur nach dem Umbau, inklusive der drei zusätzlichen Layer-A-Ordner für
+Inhalte ohne offensichtlichen Platz in der Skizze:
+
+```
+Configs/
+├── shells/{pwsh,bash,zsh(Submodul)}/
+├── terminals/{wezterm,kitty,tmux,windows-terminal}/
+├── prompt/starship.toml
+├── cli/{lazygit,glow,TCPView.zip,List.md}
+├── install/install.ps1               (install.sh folgt in Schritt 5)
+├── containers/podman/nvim            (Podman-Containerfile)
+├── scripts/                          (keepawake*.ps1, install-tools-win.ps1, pdf_zu_bilder.py)
+├── editors/{vscodevim,vsvim}/
+└── docs/{ROADMAP.md,RESTRUCTURE.md}
+```
+
 ### Begründung
 
 - Ein `$REPOS_DIR/dotfiles` pro Maschine, ein Install-Skript je Plattform
@@ -196,18 +215,42 @@ nur zsh gebraucht wird.
 
 ## 4. Bekannte Bruchstellen
 
-Drei Stellen kodieren Repo-Pfade hart und müssen bei einem Umbau mitgezogen
-werden — begrenzt und bekannt:
+Drei Stellen kodierten Repo-Pfade hart:
 
-1. `~/.config/wezterm/wezterm.lua`
-   `candidates = { join(REPOS_DIR, "Configs", "Terminals", "wezterm") }`
-   Bereits als Liste gebaut — Einzeiler.
-2. `Windows/DOTFILES/install-DOTFILES.ps1`
-   `$repoDotfilesDir = Join-Path $env:REPOS_DIR "Configs\Windows\DOTFILES\WindowsPowerShell"`
-3. `my-zsh/INSTRUCTIONS.md` — Pfadangaben in der Anleitung
+1. `~/.config/wezterm/wezterm.lua` — `candidates = { join(REPOS_DIR, "Configs",
+   "Terminals", "wezterm") }` auf jeder Maschine, auf der wezterm bereits
+   deployed ist. **Nicht Teil dieses Repos**, daher von Schritt 4 nicht
+   automatisch mitgezogen — muss pro Maschine manuell auf
+   `"Configs", "terminals", "wezterm"` angepasst werden, bevor wezterm dort
+   wieder eine Config findet.
+2. ~~`Windows/DOTFILES/install-DOTFILES.ps1`~~ → jetzt `install/install.ps1`,
+   Pfad im Skript selbst auf `Configs\shells\pwsh` mitgefixt (Schritt 4).
+3. `my-zsh/INSTRUCTIONS.md` — Pfadangaben in der Anleitung. Liegt im
+   `my-zsh`-Repo selbst, nicht in `Configs`; unverändert, da `my-zsh` jetzt als
+   Submodul unter `shells/zsh/` hängt und seine eigene Anleitung weiterhin für
+   den Standalone-Einsatz gilt.
 
-Zusätzlich: `Windows/DOTFILES/OLD_Powershell/` ist toter Ballast (alte
-Profilstände, redundant zur Git-History) und entfällt beim Umbau ersatzlos.
+Zusätzlich: `Windows/DOTFILES/OLD_Powershell/` war toter Ballast (alte
+Profilstände, redundant zur Git-History) — in Schritt 4 ersatzlos entfernt.
+
+### Umbau durchgeführt (Schritt 4, 2026-08-20)
+
+Vollständige Übernahme der Zielstruktur aus Abschnitt 3: `shells/{pwsh,bash,zsh}`,
+`terminals/{wezterm,kitty,tmux,windows-terminal}`, `prompt/starship.toml`,
+`cli/{lazygit,glow,TCPView.zip,List.md}`, `install/install.ps1`, plus drei
+zusätzliche, in der Zielskizze nicht explizit genannte Ordner für Inhalte ohne
+festen Platz in Layer A: `containers/podman/` (Podman-Containerfile),
+`scripts/` (keepawake, install-tools-win, pdf_zu_bilder.py), `editors/`
+(vscodevim, vsvim). `my-zsh` als Submodul unter `shells/zsh/` eingehängt.
+`Windows/DOTFILES/ROADMAP.md` (pwsh-spezifisch, #2–#20) ist mit nach
+`shells/pwsh/ROADMAP.md` gewandert, analog zu `my-zsh`s eigener `ROADMAP.md`.
+
+**Windows-Stolperstein:** `git mv Terminals/wezterm terminals/wezterm` schlägt
+auf NTFS (case-insensitive) mit `Invalid argument` fehl, weil Quelle und Ziel
+sich nur in der Groß-/Kleinschreibung eines Vorfahren-Pfadsegments
+unterscheiden und die Datei-Engine das als Rename auf sich selbst wertet.
+Workaround: zweistufig über einen Zwischennamen —
+`git mv Terminals/wezterm Terminals/wezterm_tmp && git mv Terminals/wezterm_tmp terminals/wezterm`.
 
 ---
 
@@ -218,8 +261,8 @@ Profilstände, redundant zur Git-History) und entfällt beim Umbau ersatzlos.
 | 1 | ~~Zugangsdaten rotieren (API-Key, WireGuard) + History-Purge~~ ✅ erledigt 2026-08-20 (Abschnitt 0) | — |
 | 2 | ~~Layer B in privates Repo, Layer C in eigenes Repo auslagern~~ ✅ erledigt 2026-08-20 (Abschnitt 2, Migration-Details) | — |
 | 3 | ~~History-Purge (`git filter-repo`): Fonts + `marksman.exe` + Layer-B/C-Pfade + Force-Push~~ ✅ erledigt 2026-08-20 — `.git` 90 MB → 2,0 MB (lokal + `origin/main` + `origin/main-unix`) | 2 |
-| 4 | Umbau auf Zielstruktur, `my-zsh` als Submodul einhängen | 3 |
-| 5 | `install.sh` + `install.ps1` vereinheitlichen | 4 |
+| 4 | ~~Umbau auf Zielstruktur, `my-zsh` als Submodul einhängen~~ ✅ erledigt 2026-08-20, siehe "Umbau durchgeführt" oben | 3 |
+| 5 | `install.sh` + `install.ps1` vereinheitlichen (inkl. Fix für `~/.config/wezterm/wezterm.lua` auf betroffenen Maschinen) | 4 |
 | 6 | Offene Punkte aus `Windows/DOTFILES/ROADMAP.md`: #8 hardcodierte Pfade, #13 Admin-freier Symlink-Fallback, #20 `Test-ProfileHealth` | 5 |
 
 Schritt 3 reduziert das Repo zusätzlich von 89,7 MB auf wenige MB (Fonts/Binary,
