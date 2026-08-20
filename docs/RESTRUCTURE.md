@@ -266,6 +266,7 @@ Workaround: zweistufig über einen Zwischennamen —
 | 4 | ~~Umbau auf Zielstruktur, `my-zsh` als Submodul einhängen~~ ✅ erledigt 2026-08-20, siehe "Umbau durchgeführt" oben | 3 |
 | 5 | ~~`install.sh` + `install.ps1` vereinheitlichen (inkl. Fix für `~/.config/wezterm/wezterm.lua` auf betroffenen Maschinen)~~ ✅ erledigt 2026-08-20, siehe Abschnitt 6 | 4 |
 | 6 | ~~Offene Punkte aus `shells/pwsh/ROADMAP.md`~~ ✅ erledigt 2026-08-20 — alle 22 offenen Punkte abgearbeitet, zwei nach Messung verworfen; siehe Abschnitt 7 | 5 |
+| 7 | ~~Checklisten-/Gate-Systematik uebertragen~~ ✅ erledigt 2026-08-20 — [`docs/checklisten/`](./checklisten/), siehe Abschnitt 8 | 6 |
 
 Schritt 3 reduziert das Repo zusätzlich von 89,7 MB auf wenige MB (Fonts/Binary,
 unabhängig von den bereits gepurgten Zugangsdaten).
@@ -412,9 +413,38 @@ kopiert.
 
 ---
 
-## 8. Nachgelagert
+## 8. Schritt 7 durchgeführt (2026-08-20): Regeln & Gates
 
-Übertragung der Checklisten- und Gate-Systematik aus
-`WKDBooks/Development/wkdbook-Lua/Checklists` (`KONZEPT.md`, `WORKFLOW.md`,
-`regeln/`, `gates/`, `belege/`) auf die hiesigen Repos. Nicht Lua-spezifisch,
-greift aber sinnvoll erst auf einer aufgeräumten Struktur — also nach Schritt 5.
+Die Checklisten- und Gate-Systematik aus
+`WKDBooks/Development/wkdbook-Lua/Checklists` ist auf dieses Repo übertragen —
+nach [`docs/checklisten/`](./checklisten/).
+
+### Übertragen, nicht kopiert
+
+Die dortige Sammlung bleibt die kanonische Fassung für Lua- und Neovim-Code.
+Hier steht nur, was ein Dotfiles-Repo betrifft und dort nicht vorkommt:
+Repo-Zuschnitt, Installer- und Verknüpfungssemantik, Shell-Regeln für bash
+**und** PowerShell, Geheimnisse. Der Grundsatz „jede Regel steht genau einmal"
+gilt über Repo-Grenzen hinweg; für den Lua-Anteil (`terminals/wezterm/**`)
+verweisen die Dateien auf die kanonische Sammlung, statt sie zu duplizieren.
+Die ID-Präfixe sind bewusst andere (`DOT-`, `SH-`, `KEY-`, `MACH-`, `REV-`,
+`PUB-`), damit nicht zwei verschiedene Regeln denselben Namen tragen.
+
+### Kein `belege/` — die Belege sind die eigene Historie
+
+Die Lua-Sammlung belegt ihre Regeln mit Befunden aus 33 fremden Repos. Hier
+war das unnötig: dieses Repo ist der Beleg. Jede Regel trägt in der Spalte
+„Beleg" den Vorfall, aus dem sie entstanden ist — die exponierten Zugangsdaten
+(§ 0), die 89,7 MB (§ 1), die nach Schritt 4 ins Leere zeigenden Verknüpfungen
+(§ 4), das CRLF-Risiko im Shebang (§ 6), `Alt+c` mit `Invoke-Expression` (§ 7).
+Eine Regel ohne Vorfall wäre eine Vermutung und steht nicht drin.
+
+### Struktur
+
+| Ordner | Frage | Inhalt |
+| ------ | ----- | ------ |
+| [`regeln/`](./checklisten/regeln/) | Was gilt? | `DOTFILES.md` (Repo-Zuschnitt, Installer), `SHELL.md` (bash + PowerShell, Pfade, Startzeit), `SECRETS.md` |
+| [`gates/`](./checklisten/gates/) | Bin ich fertig? | `NEW_MACHINE.md` (einmal pro Maschine), `REVIEW.md` (vor Merge), `PUBLISH.md` (vor Push ins Public-Repo) |
+
+Die Gates wiederholen die Regeln nicht, sie verweisen per ID auf sie — eine
+Änderung an einer Regel muss deshalb an genau einer Stelle passieren.
