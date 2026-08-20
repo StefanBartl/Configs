@@ -1,6 +1,6 @@
 # Restrukturierung `Configs` — Analyse & Plan
 
-> **Status:** Analyse abgeschlossen, Umsetzung offen
+> **Status:** Schritte 1–5 umgesetzt, offen ist nur noch Schritt 6 (Abschnitt 5)
 > **Stand:** 2026-08-20
 > **Ausgangsfrage:** Eigenes Repo für pwsh/wezterm (analog `my-zsh`), oder alles
 > in ein Repo zusammenführen?
@@ -183,7 +183,7 @@ Configs/
 ├── terminals/{wezterm,kitty,tmux,windows-terminal}/
 ├── prompt/starship.toml
 ├── cli/{lazygit,glow,TCPView.zip,List.md}
-├── install/install.ps1               (install.sh folgt in Schritt 5)
+├── install/{links.conf,install.sh,install.ps1,wezterm-entry.lua,README.md}
 ├── containers/podman/nvim            (Podman-Containerfile)
 ├── scripts/                          (keepawake*.ps1, install-tools-win.ps1, pdf_zu_bilder.py)
 ├── editors/{vscodevim,vsvim}/
@@ -217,12 +217,14 @@ nur zsh gebraucht wird.
 
 Drei Stellen kodierten Repo-Pfade hart:
 
-1. `~/.config/wezterm/wezterm.lua` — `candidates = { join(REPOS_DIR, "Configs",
+1. ~~`~/.config/wezterm/wezterm.lua` — `candidates = { join(REPOS_DIR, "Configs",
    "Terminals", "wezterm") }` auf jeder Maschine, auf der wezterm bereits
-   deployed ist. **Nicht Teil dieses Repos**, daher von Schritt 4 nicht
-   automatisch mitgezogen — muss pro Maschine manuell auf
-   `"Configs", "terminals", "wezterm"` angepasst werden, bevor wezterm dort
-   wieder eine Config findet.
+   deployed ist~~ → gelöst in Schritt 5: der Loader liegt jetzt als
+   `install/wezterm-entry.lua` **im Repo** und wird von beiden Installern als
+   Symlink nach `~/.config/wezterm/wezterm.lua` gelegt. Damit ist der Repo-Pfad
+   nur noch an einer Stelle kodiert (und dort gleich auf `terminals/wezterm`
+   korrigiert, mit `dotfiles` als Zweitkandidat für den geplanten Repo-Namen).
+   Auf bereits deployten Maschinen genügt ein Lauf des Installers.
 2. ~~`Windows/DOTFILES/install-DOTFILES.ps1`~~ → jetzt `install/install.ps1`,
    Pfad im Skript selbst auf `Configs\shells\pwsh` mitgefixt (Schritt 4).
 3. `my-zsh/INSTRUCTIONS.md` — Pfadangaben in der Anleitung. Liegt im
@@ -262,15 +264,85 @@ Workaround: zweistufig über einen Zwischennamen —
 | 2 | ~~Layer B in privates Repo, Layer C in eigenes Repo auslagern~~ ✅ erledigt 2026-08-20 (Abschnitt 2, Migration-Details) | — |
 | 3 | ~~History-Purge (`git filter-repo`): Fonts + `marksman.exe` + Layer-B/C-Pfade + Force-Push~~ ✅ erledigt 2026-08-20 — `.git` 90 MB → 2,0 MB (lokal + `origin/main` + `origin/main-unix`) | 2 |
 | 4 | ~~Umbau auf Zielstruktur, `my-zsh` als Submodul einhängen~~ ✅ erledigt 2026-08-20, siehe "Umbau durchgeführt" oben | 3 |
-| 5 | `install.sh` + `install.ps1` vereinheitlichen (inkl. Fix für `~/.config/wezterm/wezterm.lua` auf betroffenen Maschinen) | 4 |
-| 6 | Offene Punkte aus `Windows/DOTFILES/ROADMAP.md`: #8 hardcodierte Pfade, #13 Admin-freier Symlink-Fallback, #20 `Test-ProfileHealth` | 5 |
+| 5 | ~~`install.sh` + `install.ps1` vereinheitlichen (inkl. Fix für `~/.config/wezterm/wezterm.lua` auf betroffenen Maschinen)~~ ✅ erledigt 2026-08-20, siehe Abschnitt 7 | 4 |
+| 6 | Offene Punkte aus `shells/pwsh/ROADMAP.md`: #8 hardcodierte Pfade, ~~#13 Admin-freier Symlink-Fallback~~ (mit Schritt 5 erledigt), #20 `Test-ProfileHealth` | 5 |
 
 Schritt 3 reduziert das Repo zusätzlich von 89,7 MB auf wenige MB (Fonts/Binary,
 unabhängig von den bereits gepurgten Zugangsdaten).
 
 ---
 
-## 6. Nachgelagert
+## 6. Schritt 5 durchgeführt (2026-08-20)
+
+### Ein Manifest, zwei Installer
+
+Statt zwei Skripte mit je eigener, driftender Liste gibt es jetzt
+`install/links.conf` als einzige Quelle der Wahrheit — ein Eintrag pro
+Verknüpfung, plattformmarkiert (`unix` / `windows` / `all`), mit Tokens für die
+Zielpfade (`$HOME`, `$XDG_CONFIG`, `$APPDATA`, `$PS5`, `$PS7`).
+`install/install.sh` und `install/install.ps1` sind nur noch Ausführungs-
+maschinen dafür. Ein neuer Config-Pfad wird an einer Stelle eingetragen und gilt
+sofort für beide Plattformen. Details: [`install/README.md`](../install/README.md).
+
+Beide Installer bieten `--dry-run`/`-DryRun`, schützen vorhandene *echte*
+Dateien am Ziel (nur mit `--force`/`-Force` ersetzt, dann mit Backup nach
+`<ziel>.bak-<zeitstempel>`) und initialisieren das `my-zsh`-Submodul unter
+`shells/zsh`, falls es noch nicht ausgecheckt ist.
+
+Weiter offen bleibt `shells/pwsh/ROADMAP.md` #12: `install.ps1` bestimmt das
+Profilverzeichnis weiterhin über `[Environment]::GetFolderPath('MyDocuments')`
+und landet damit auf OneDrive-umgeleiteten Maschinen im OneDrive-Pfad. Das ist
+bewusst unverändert übernommen — der Fix gehört zu Schritt 6, nicht in den
+Umbau.
+
+Nebenbei erledigt: `shells/pwsh/ROADMAP.md` #13 (Admin-freier Symlink-Fallback).
+`install.ps1` legt Verzeichnisse als Junction an (nie erhöhte Rechte nötig) und
+versucht für Dateien Symlink → Hardlink → Kopie, wobei nur der letzte Fall
+verlustbehaftet ist und deshalb explizit als `KOPIE` gewarnt wird.
+
+### WezTerm-Entry als Symlink statt als Copy-Paste-Snippet
+
+`install/wezterm-entry.lua` ersetzt das bisher pro Maschine einkopierte
+`~/.config/wezterm/wezterm.lua`. Der Installer legt es als Symlink — der
+Repo-Pfad ist damit nur noch **einmal** kodiert, im Repo, versioniert. Das war
+Bruchstelle #1 aus Abschnitt 4 und ist damit strukturell gelöst statt pro
+Maschine nachgezogen.
+
+Der Loader sucht `<root>/{Configs,dotfiles}/terminals/wezterm` unter
+`$REPOS_DIR` bzw. `~/repos`, `dotfiles` als Vorgriff auf den in Abschnitt 3
+skizzierten Zielnamen. Die veraltete Kopie `terminals/wezterm/docs/NewEntryFile.lua`
+(zeigte noch auf `Terminals/`) wurde entfernt, `docs/EntryPoint.md` verweist
+jetzt auf die eine Datei.
+
+### Geprüft und verworfen: `lib.nvim` in der wezterm-Config
+
+Naheliegende Idee, weil `terminals/wezterm/config/tabtitle.lua` einige Helfer
+selbst implementiert, die `lib.nvim` bereits hat. Die technische Voraussetzung
+ist sogar erfüllt: der Namespace `lib.lua.*` ist explizit editorunabhängig und
+lädt nachweislich in nacktem Lua 5.4 ohne `vim`-Global — `require("lib.lua.strings")`,
+`lib.lua.tables` und `lib.lua.strings.utf8` funktionieren dort.
+
+Trotzdem verworfen, weil die tatsächliche Überschneidung zu klein für die
+Kopplung ist:
+
+| Helfer in `tabtitle.lua` | `lib.nvim`-Pendant | ersetzbar? |
+|---|---|---|
+| `escpat` | `lib.lua.strings.escape_lua_magic` | ja (1 Zeile) |
+| `url_decode` | `lib.lua.strings.uri_decode` | ja (5 Zeilen) |
+| `truncate_left_cells` | — | **nein**, braucht `wezterm.column_width` (Terminal-Zellen inkl. Nerd-Font-Glyphen, nicht Codepoints) |
+| `fit_width` | — | **nein**, dito plus `wezterm.truncate_right` |
+| `normalize_home`, `split_path` | — | nein, WSL/Windows-`file://`-Spezifika |
+
+Übrig bleiben ~6 Zeilen. Dagegen stünde: ein weiteres Submodul im
+Dotfiles-Repo, `package.path`-Verdrahtung bei jedem Config-Reload, und eine
+Abhängigkeit auf eine Bibliothek, deren eigenes README "no stability
+guarantees … may change, rename, or remove modules at any time" sagt und zum
+Pinnen eines Commits rät. Für sechs Zeilen ist das der schlechtere Tausch —
+`lib.nvim` bleibt, wofür es gebaut ist: Neovim-Plugins.
+
+---
+
+## 7. Nachgelagert
 
 Übertragung der Checklisten- und Gate-Systematik aus
 `WKDBooks/Development/wkdbook-Lua/Checklists` (`KONZEPT.md`, `WORKFLOW.md`,
