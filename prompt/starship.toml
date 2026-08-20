@@ -19,24 +19,37 @@ scan_timeout = 1000
 # Prompt Layout
 # -----------------------------
 format = """
-$custom.runtime $directory $git_branch $git_status
+${env_var.WSL_DISTRO_NAME}$container$directory $git_branch $git_status
 $character"""
 
 # -----------------------------
 # Runtime indicator (sync with WezTerm)
 # -----------------------------
-[custom.runtime]
-command = """
-if [ -f /.dockerenv ]; then
-  echo "[DOCKER]"
-elif [ -f /run/.containerenv ]; then
-  echo "[PODMAN]"
-else
-  echo "[WSL]"
-fi
-"""
-when = "true"
-format = "[$output]($style) "
+# Frueher ein [custom.runtime], das per sh-Skript /.dockerenv und
+# /run/.containerenv prueft. Das hatte drei Fehler:
+#
+#   1. Es startete bei JEDEM Prompt einen Subprozess. Unter Windows gibt es
+#      kein sh, das starship einfach aufrufen kann — der Aufruf lief in den
+#      command_timeout und warf bei jedem Prompt eine Warnung.
+#   2. Im Layout stand `$custom.runtime`. Ohne geschweifte Klammern ist das
+#      kein Modulverweis: starship rendert `$custom` und haengt `.runtime` als
+#      Literal an. Im Prompt stand woertlich ".runtime".
+#   3. Ohne .gitattributes wurde die Datei unter Windows mit CRLF ausgecheckt,
+#      womit jede Zeile des sh-Skripts auf einem \r endete.
+#
+# Beides kann starship nativ, ohne Subprozess und damit ohne Timeout:
+#   [container]                erkennt Docker, Podman, systemd-nspawn, OCI
+#   [env_var.WSL_DISTRO_NAME]  ist genau dann gesetzt, wenn es WSL ist
+#
+# In einem Container innerhalb von WSL erscheinen beide — das ist die
+# ehrlichere Anzeige als das frueher exklusive if/elif/else.
+
+[container]
+format = '[\[$name\]]($style) '
+style = "bold cyan"
+
+[env_var.WSL_DISTRO_NAME]
+format = '[\[WSL\]]($style) '
 style = "bold cyan"
 
 # -----------------------------
