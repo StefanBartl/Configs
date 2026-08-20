@@ -1,3 +1,12 @@
+# ---> Secrets (never commit — see docs/RESTRUCTURE.md, Abschnitt 0)
+env/.openai_env
+VPN/ProtonVPN/WireGuard/
+VPN/ProtonVPN/**/*.ovpn
+VPN/RemotePlay/WG-keys.png
+*.pem
+*id_rsa*
+*id_ed25519*
+
 # ---> Lua
 # Compiled Lua sources
 luac.out

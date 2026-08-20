@@ -7,30 +7,32 @@
 
 ---
 
-## 0. Vorrangig: Exponierte Zugangsdaten
+## 0. Erledigt: Exponierte Zugangsdaten (2026-08-20)
 
-`StefanBartl/Configs` ist **public** und enthält getrackte Zugangsdaten.
+`StefanBartl/Configs` war **public** und enthielt getrackte Zugangsdaten.
 Erstmals eingecheckt mit Commit `b92cb6e`, seither durchgehend in `main`.
 
-Betroffen sind:
+Betroffen waren:
 
 - `env/` — API-Key-Datei
 - `VPN/ProtonVPN/WireGuard/` — 4 Configs mit privatem Schlüsselmaterial
 - `VPN/ProtonVPN/` — 7 OpenVPN-Profile
 - `VPN/RemotePlay/` — Screenshot mit Schlüsselmaterial
-- `docker-cred/` — GPG-**Public**-Keyring-Listing, kein privates Material (geringe Schwere)
-- `Settings_Profiles/` — Bookmark-Export und Softwareinventar (Privacy, nicht sicherheitskritisch)
+- `docker-cred/` — GPG-**Public**-Keyring-Listing, kein privates Material (geringe Schwere, unverändert im Repo)
+- `Settings_Profiles/` — Bookmark-Export und Softwareinventar (Privacy, nicht sicherheitskritisch, unverändert im Repo)
 
-### Reihenfolge ist nicht verhandelbar
+### Durchgeführt, in dieser Reihenfolge
 
-Ein History-Rewrite macht bereits abgegriffene Schlüssel **nicht** ungültig.
-Public-GitHub wird von Scrapern erfasst, üblicherweise binnen Minuten.
+1. ✅ API-Key nur noch als lokale Umgebungsvariable geführt, nicht mehr im Repo
+2. ✅ ProtonVPN/WireGuard: alte Konfigurationen ungültig, keine aktiven Peers mehr
+3. ✅ History-Purge (`git filter-repo`) + Force-Push auf `main` und `main-unix`
 
-1. API-Key revoken
-2. ProtonVPN: WireGuard-Configs neu generieren, alte Peers entfernen
-3. **Erst dann** History-Purge + Force-Push
+Die betroffenen Dateien sind vollständig aus der Git-History entfernt (verifiziert
+per Blob-Scan über alle Objekte, alle Refs). `.gitignore` verhindert versehentliches
+erneutes Einchecken. `docker-cred/` und `Settings_Profiles/` blieben unangetastet —
+kein privates Schlüsselmaterial bzw. nur Privacy-relevant, nicht sicherheitskritisch.
 
-`my-zsh` löst das bereits korrekt: `secrets.zsh` lädt zur Laufzeit aus
+`my-zsh` löst Secret-Handling bereits korrekt: `secrets.zsh` lädt zur Laufzeit aus
 `~/personel_env/` — außerhalb des Repos. Dieses Muster ist die Zielvorgabe
 für alle Plattformen.
 
@@ -194,15 +196,15 @@ Profilstände, redundant zur Git-History) und entfällt beim Umbau ersatzlos.
 
 | # | Schritt | Voraussetzung |
 |---|---|---|
-| 1 | **Zugangsdaten rotieren** (API-Key, WireGuard) | — |
-| 2 | Layer B in privates Repo, Layer C in eigenes Repo auslagern | 1 |
-| 3 | History-Purge (`git filter-repo`): Zugangsdaten + Fonts + `marksman.exe` + Force-Push | 2 |
+| 1 | ~~Zugangsdaten rotieren (API-Key, WireGuard) + History-Purge~~ ✅ erledigt 2026-08-20 (Abschnitt 0) | — |
+| 2 | Layer B in privates Repo, Layer C in eigenes Repo auslagern | — |
+| 3 | History-Purge (`git filter-repo`): Fonts + `marksman.exe` + Force-Push (Größenreduktion) | 2 |
 | 4 | Umbau auf Zielstruktur, `my-zsh` als Submodul einhängen | 3 |
 | 5 | `install.sh` + `install.ps1` vereinheitlichen | 4 |
 | 6 | Offene Punkte aus `Windows/DOTFILES/ROADMAP.md`: #8 hardcodierte Pfade, #13 Admin-freier Symlink-Fallback, #20 `Test-ProfileHealth` | 5 |
 
-Schritt 3 reduziert das Repo von 89,7 MB auf wenige MB.
-Schritt 1 ist von allem anderen unabhängig und sollte sofort erfolgen.
+Schritt 3 reduziert das Repo zusätzlich von 89,7 MB auf wenige MB (Fonts/Binary,
+unabhängig von den bereits gepurgten Zugangsdaten).
 
 ---
 
