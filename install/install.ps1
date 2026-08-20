@@ -64,12 +64,17 @@ if (-not (Test-Path -LiteralPath $manifest)) {
     return
 }
 
+# PowerShell sucht seine Profildatei in "Eigene Dokumente" — wo das liegt,
+# bestimmt Windows, nicht dieses Skript. Ist der Ordner nach OneDrive
+# umgeleitet, landet das Profil dort und daran fuehrt kein Weg vorbei.
+# Module dagegen schon: die gehen nach $LOCALAPPDATA (siehe links.conf).
 $docsDir = [Environment]::GetFolderPath('MyDocuments')
 $tokens  = @{
-    '$PS5'     = Join-Path $docsDir 'WindowsPowerShell'
-    '$PS7'     = Join-Path $docsDir 'PowerShell'
-    '$APPDATA' = $env:APPDATA
-    '$HOME'    = $env:USERPROFILE
+    '$PS5'          = Join-Path $docsDir 'WindowsPowerShell'
+    '$PS7'          = Join-Path $docsDir 'PowerShell'
+    '$APPDATA'      = $env:APPDATA
+    '$LOCALAPPDATA' = $env:LOCALAPPDATA
+    '$HOME'         = $env:USERPROFILE
 }
 
 $stats = @{ Linked = 0; Skipped = 0; Failed = 0 }
@@ -375,6 +380,12 @@ foreach ($name in $selected) {
     if ($missing) {
         Write-Info "Hinweis: '$missing' ist nicht im PATH — Config wird trotzdem verlinkt"
     }
+}
+
+if ($selected -contains 'pwsh' -and $docsDir -like '*OneDrive*') {
+    Write-Info 'Hinweis: "Eigene Dokumente" ist nach OneDrive umgeleitet. Die Profildatei'
+    Write-Info '         muss dort liegen (Windows-Vorgabe), die Module gehen aber nach'
+    Write-Info "         $env:LOCALAPPDATA\PowerShell\Modules — kein Sync-Layer beim Import."
 }
 
 Initialize-Submodules

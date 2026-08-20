@@ -1,4 +1,21 @@
 # -----------------------------
+# Timeouts
+# -----------------------------
+# Von zsh (Linux/WSL) UND pwsh (Windows) geladen. Die Defaults sind auf
+# Linux-Verhaeltnisse geeicht und unter Windows zu knapp: git.exe muss dort
+# durch den Virenscanner, in Corporate-Setups zusaetzlich durch Filter-Treiber.
+# Reisst der Timeout, verschwindet das git-Segment kommentarlos aus dem Prompt.
+command_timeout = 2000
+
+# Wie lange starship das aktuelle Verzeichnis nach Projektdateien absuchen darf.
+# Default sind 30 ms — in grossen Repos (WKDBooks, Notes) reicht das nicht.
+# Bewusst NICHT auf die urspruenglich notierten 30000 gesetzt: das waere eine
+# Obergrenze von 30 Sekunden, in der der Prompt bei einem haengenden Dateisystem
+# (Netzlaufwerk, schlafende Platte) blockiert. 1000 ms loesen das eigentliche
+# Problem und begrenzen den schlimmsten Fall auf eine Sekunde.
+scan_timeout = 1000
+
+# -----------------------------
 # Prompt Layout
 # -----------------------------
 format = """
@@ -39,6 +56,10 @@ style = "bold purple"
 
 [git_status]
 style = "red"
+# Submodule-Status ueberspringen: bei Repos mit Submodulen (Configs -> my-zsh,
+# my-zsh -> plugins) kostet die Statusabfrage einen eigenen git-Durchlauf pro
+# Submodul und war der haeufigste Grund fuer ein gerissenes command_timeout.
+ignore_submodules = true
 
 # -----------------------------
 # Prompt symbol

@@ -1,17 +1,25 @@
 # ==============================================================================
 # Microsoft.PowerShell_profile.ps1  –  CurrentUserCurrentHost
 # ==============================================================================
-# Managed via Symlink / Loader-Script aus:
-#   $env:REPOS_DIR\Configs\Windows\DOTFILES\WindowsPowerShell\
+# Managed via Symlink / Junction aus:
+#   $env:REPOS_DIR\Configs\shells\pwsh\
 #
 # Einrichtung auf neuer Maschine:
 #   $env:REPOS_DIR setzen, dann ausführen:
-#   & "$env:REPOS_DIR\Configs\Windows\DOTFILES\install-DOTFILES.ps1"
+#   & "$env:REPOS_DIR\Configs\install\install.ps1" -Only pwsh
 #
 # ==============================================================================
 
-# Set-Location "C:\Users\StefanBartl\OneDrive - TRICENTIS\"
-Remove-PSReadLineKeyHandler -Chord 'Ctrl+s'
+#region ── -1. Fehlerverhalten während des Profil-Laufs ───────────────────────
+# Ein einzelner Fehler in einer Initialisierung (starship weg, zoxide kaputt,
+# Chocolatey-Profil defekt) darf den Rest des Profils nicht abbrechen. Der
+# aufrufende Wert wird gesichert und am Ende wiederhergestellt, damit die
+# interaktive Session nicht mit einem vom Profil gesetzten Wert weiterläuft.
+$_eapSaved = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+#endregion
+
+Remove-PSReadLineKeyHandler -Chord 'Ctrl+s' -ErrorAction SilentlyContinue
 
 #region ── 0. Lokaler Modul-Pfad (Performance-kritisch) ──────────────────────
 # Trägt einen lokalen Pfad (nie OneDrive) vorne in $PSModulePath ein.
@@ -56,8 +64,12 @@ function Test-HasCommand {
 #region ── 2. Init-Cache-Hilfsfunktion ────────────────────────────────────────
 # Gemeinsame Logik für Starship und Zoxide:
 # – Cache liegt in LocalAppData (lokal, persistent, nie OneDrive, nie TEMP)
-# – TTL: 7 Tage – init-Skripte ändern sich selten; tägliche Neuausführung war
-#   unnötige Startup-Last
+# – Primärer Invalidierungsgrund ist die Tool-VERSION, nicht das Alter: ein
+#   Update von starship/zoxide muss sofort greifen, und solange sich nichts
+#   ändert, ist ein 3 Monate alter Cache genauso korrekt wie ein frischer.
+#   Die Version steht in einer Sidecar-Datei <cache>.ver neben dem Cache.
+# – Die TTL bleibt als Rückfallebene für alles, was die Version nicht abdeckt
+#   (geänderte Konfiguration, kaputt geschriebener Cache).
 # – Schreibt nur, wenn Init-Ausgabe nicht leer ist → altes Cache bleibt erhalten
 #   wenn ein Tool vorübergehend kaputt ist
 function Update-InitCache {
@@ -65,14 +77,31 @@ function Update-InitCache {
     param(
         [Parameter(Mandatory)][string]$CachePath,
         [Parameter(Mandatory)][scriptblock]$InitBlock,
-        [int]$MaxAgeDays = 7
+        [scriptblock]$VersionBlock,
+        [int]$MaxAgeDays = 90
     )
     $dir = Split-Path $CachePath
     if (-not (Test-Path $dir)) { $null = New-Item -ItemType Directory -Path $dir -Force }
 
-    $isStale = (-not (Test-Path $CachePath)) -or
-    ((Get-Item $CachePath -ErrorAction SilentlyContinue).LastWriteTime `
-        -lt (Get-Date).AddDays(-$MaxAgeDays))
+    $verPath = "$CachePath.ver"
+    $version = $null
+    if ($VersionBlock) {
+        # Schlägt der Versionsaufruf fehl, bleibt $version leer und die TTL
+        # entscheidet allein — kein Grund, deswegen den Cache wegzuwerfen.
+        try { $version = (& $VersionBlock | Out-String).Trim() } catch { $version = $null }
+    }
+
+    $isStale = -not (Test-Path $CachePath)
+
+    if (-not $isStale -and $version) {
+        $cachedVersion = if (Test-Path $verPath) { (Get-Content $verPath -Raw -ErrorAction SilentlyContinue).Trim() } else { $null }
+        if ($cachedVersion -ne $version) { $isStale = $true }
+    }
+
+    if (-not $isStale) {
+        $written = (Get-Item $CachePath -ErrorAction SilentlyContinue).LastWriteTime
+        if ($written -lt (Get-Date).AddDays(-$MaxAgeDays)) { $isStale = $true }
+    }
 
     if ($isStale) {
         $lines = & $InitBlock
@@ -83,6 +112,11 @@ function Update-InitCache {
                 ($lines -join "`n"),
                 [System.Text.UTF8Encoding]::new($false)
             )
+            # Version erst NACH dem Cache schreiben: bricht der Schreibvorgang
+            # ab, gilt der Cache beim nächsten Start weiterhin als veraltet.
+            if ($version) {
+                [System.IO.File]::WriteAllText($verPath, $version, [System.Text.UTF8Encoding]::new($false))
+            }
         }
     }
 
@@ -98,7 +132,8 @@ if (Test-HasCommand 'starship') {
     try {
         Update-InitCache `
             -CachePath (Join-Path $_cacheBase 'starship_init.ps1') `
-            -InitBlock { & starship init powershell }
+            -InitBlock { & starship init powershell } `
+            -VersionBlock { & starship --version }
     }
     catch {
         Write-Host "[warn] starship init fehlgeschlagen: $($_.Exception.Message)" -ForegroundColor Yellow
@@ -114,7 +149,8 @@ if (Test-HasCommand 'zoxide') {
     try {
         Update-InitCache `
             -CachePath (Join-Path $_cacheBase 'zoxide_init.ps1') `
-            -InitBlock { & zoxide init powershell --hook prompt }
+            -InitBlock { & zoxide init powershell --hook prompt } `
+            -VersionBlock { & zoxide --version }
     }
     catch {
         Write-Host "[warn] zoxide init fehlgeschlagen: $($_.Exception.Message)" -ForegroundColor Yellow
@@ -135,12 +171,22 @@ if ($_psrl) {
     $psrlVer = $_psrl.Version
 
     # Prediction-Source: HistoryAndPlugin erfordert PSReadLine >= 2.2 UND PowerShell >= 7.2
-    if ($psrlVer -ge [version]'2.2' -and $PSVersionTable.PSVersion -ge [version]'7.2') {
-        Set-PSReadLineOption -PredictionSource HistoryAndPlugin
-        Set-PSReadLineOption -PredictionViewStyle ListView   # F2 wechselt Ansicht
-    }
-    elseif ($psrlVer -ge [version]'2.1' -and $PSVersionTable.PSVersion -ge [version]'7.0') {
-        Set-PSReadLineOption -PredictionSource History
+    #
+    # try/catch, weil Set-PSReadLineOption -PredictionSource wirft, sobald die
+    # Konsolenausgabe umgeleitet ist oder kein Virtual-Terminal unterstuetzt
+    # (pwsh -Command aus einem Skript, VS-Code-Tasks, CI). Ohne den Guard
+    # entstehen dort bei jedem Start zwei rote Fehlerbloecke, obwohl
+    # Prediction in so einer Session ohnehin sinnlos ist.
+    try {
+        if ($psrlVer -ge [version]'2.2' -and $PSVersionTable.PSVersion -ge [version]'7.2') {
+            Set-PSReadLineOption -PredictionSource HistoryAndPlugin -ErrorAction Stop
+            Set-PSReadLineOption -PredictionViewStyle ListView -ErrorAction Stop  # F2 wechselt Ansicht
+        }
+        elseif ($psrlVer -ge [version]'2.1' -and $PSVersionTable.PSVersion -ge [version]'7.0') {
+            Set-PSReadLineOption -PredictionSource History -ErrorAction Stop
+        }
+    } catch {
+        # Kein Terminal, das Prediction darstellen kann — still weitermachen.
     }
 
     Set-PSReadLineKeyHandler -Key Tab        -Function MenuComplete
@@ -160,7 +206,18 @@ $env:LESS = '-R'
 # Wird aus dem lokalen Pfad (Abschnitt 0) geladen – kein OneDrive-Zugriff.
 # -DisableNameChecking unterdrückt "unapproved verb"-Warnung für Kurzaliase
 # wie ls, mkcd, gg etc., die absichtlich Unix-vertraut benannt sind.
-Import-Module MyCliHelpers -ErrorAction SilentlyContinue -DisableNameChecking
+#
+# try/catch statt nur -ErrorAction: zeigt eine Junction im Modulpfad ins Leere
+# (z. B. nach einem Repo-Umbau), meldet Import-Module einen Pfadfehler, den
+# -ErrorAction SilentlyContinue nicht schluckt. Statt eines roten Blocks bei
+# jedem Start gibt es dann einen Satz, der sagt, was zu tun ist.
+try {
+    Import-Module MyCliHelpers -ErrorAction Stop -DisableNameChecking
+} catch {
+    Write-Host '[warn] MyCliHelpers konnte nicht geladen werden.' -ForegroundColor Yellow
+    Write-Host "        $($_.Exception.Message)" -ForegroundColor DarkYellow
+    Write-Host '        Reparatur:  & "$env:REPOS_DIR\Configs\install\install.ps1" -Only pwsh -Force' -ForegroundColor DarkYellow
+}
 #endregion
 
 #region ── 8. Update-WindowsApps-Modul ────────────────────────────────────────
@@ -204,5 +261,12 @@ function case {
 # See https://ch0.co/tab-completion for details.
 $ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
 if (Test-Path($ChocolateyProfile)) {
-    Import-Module "$ChocolateyProfile"
+    Import-Module "$ChocolateyProfile" -ErrorAction SilentlyContinue
 }
+Remove-Variable -Name ChocolateyProfile -ErrorAction SilentlyContinue
+
+#region ── 99. Fehlerverhalten wiederherstellen ───────────────────────────────
+# Gegenstueck zu Abschnitt -1. Ab hier gilt wieder, was die Session vorgibt.
+$ErrorActionPreference = $_eapSaved
+Remove-Variable -Name _eapSaved -ErrorAction SilentlyContinue
+#endregion
