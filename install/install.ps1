@@ -266,7 +266,27 @@ function Clear-LinkTarget {
     # ReparsePoint = bestehender Symlink/Junction: darf immer weg.
     if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
         if ($item.PSIsContainer) {
-            [IO.Directory]::Delete($Path)
+            # Junctions unter OneDrive tragen oft ReadOnly — damit verweigern
+            # sowohl Directory.Delete als auch rmdir den Dienst ("Access denied").
+            if ($item.Attributes -band [IO.FileAttributes]::ReadOnly) {
+                try {
+                    $item.Attributes = $item.Attributes -band (-bnot [IO.FileAttributes]::ReadOnly)
+                } catch {
+                    Write-Info "ReadOnly-Attribut bleibt gesetzt: $Path"
+                }
+            }
+            # Directory.Delete scheitert ausserdem bei Junctions, deren Ziel nicht
+            # mehr existiert. 'rmdir' entfernt den Reparse-Point, nie dessen Inhalt.
+            try {
+                [IO.Directory]::Delete($Path)
+            } catch {
+                cmd /c "rmdir `"$Path`"" 2>&1 | Out-Null
+                if (Test-Path -LiteralPath $Path) {
+                    Write-Fail "vorhandene Verknuepfung nicht entfernbar: $Path ($($_.Exception.Message.Trim()))"
+                    $stats.Failed++
+                    return $false
+                }
+            }
         } else {
             Remove-Item -LiteralPath $Path -Force
         }
