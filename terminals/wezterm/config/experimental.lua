@@ -59,5 +59,11 @@ return function(Config)
 	Config.hide_tab_bar_if_only_one_tab = false
 	Config.show_new_tab_button_in_tab_bar = false
 	Config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
-	Config.window_padding = { left = 9, right = 8, top = 8, bottom = 8 }
+	-- Padding in Zell-Einheiten statt Pixeln: WezTerm rechnet selbst um, das
+	-- Ergebnis ist damit per Definition ein glattes Vielfaches der Zellgröße.
+	-- Nötig, weil WezTerms OSC-1337-Bildplatzierung das Fenster-Padding nicht
+	-- mitrechnet — bei einem Pixelwert, der keine ganze Zelle ist (vorher 9/8),
+	-- bleibt ein Sub-Zellen-Versatz, den kein Plugin ausgleichen kann.
+	-- Messprotokoll: images.nvim, docs/ROADMAP/TERMINALS.md.
+	Config.window_padding = { left = "1cell", right = "1cell", top = "1cell", bottom = "1cell" }
 end
