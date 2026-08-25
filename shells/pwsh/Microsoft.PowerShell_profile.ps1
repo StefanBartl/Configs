@@ -254,6 +254,54 @@ function case {
 }
 #endregion
 
+#region ── 10. Repo-Sprung ───────────────────────────────────────────────────
+# `spotlight` → cd $env:REPOS_DIR\spotlight.nvim, ohne dass irgendwo Namen
+# gepflegt werden. Auflösung in MyCliHelpers (Resolve-Repo, repo),
+# Konzept: docs/KONZEPT-REPO-SPRUNG.md
+#
+# Der Hook steht hier und nicht im Modul, weil er Session-State verändert.
+# Er greift nur, wenn PowerShell das Wort nicht als Kommando auflösen konnte —
+# also nur dort, wo ohnehin ein Fehler fällig wäre. Damit kann er nie ein
+# echtes Kommando verdecken (`diff` bleibt der delta-Wrapper; das Repo
+# diff.nvim ist über `diff-nvim` und `repo diff` erreichbar).
+#
+# -Strict lässt Substring-Treffer weg: ein Tippfehler soll ein Fehler bleiben
+# und nicht in einem überraschenden Verzeichniswechsel enden.
+try {
+    if (Get-Command Resolve-Repo -ErrorAction SilentlyContinue) {
+
+        # Einen bereits gesetzten Handler sichern statt ersetzen, damit ein
+        # anderes Modul nicht stillschweigend entwertet wird.
+        $_cnfPrev = $ExecutionContext.SessionState.InvokeCommand.CommandNotFoundAction
+
+        $ExecutionContext.SessionState.InvokeCommand.CommandNotFoundAction = {
+            param($CommandName, $EventArgs)
+
+            # Alles mit Pfadtrenner war nie als Repo-Name gemeint.
+            if ($CommandName -notmatch '[\\/:]') {
+                $hits = @(Resolve-Repo -Query $CommandName -Strict)
+                if ($hits.Count -eq 1) {
+                    $target = $hits[0]
+                    $EventArgs.CommandScriptBlock = { Set-RepoLocation $target }.GetNewClosure()
+                    $EventArgs.StopSearch = $true
+                    return
+                }
+            }
+
+            if ($_cnfPrev) { & $_cnfPrev $CommandName $EventArgs }
+        }.GetNewClosure()
+
+        # zoxide-Seeding: läuft nur, wenn sich der Inhalt von $env:REPOS_DIR seit
+        # dem letzten Mal geändert hat. Im Normalfall kein Subprozess.
+        Update-RepoSeed
+    }
+}
+catch {
+    Write-Host "[warn] Repo-Sprung nicht eingerichtet: $($_.Exception.Message)" -ForegroundColor Yellow
+    Write-Host '        Reparatur:  & "$env:REPOS_DIR\Configs\install\install.ps1" -Only pwsh -Force' -ForegroundColor DarkYellow
+}
+#endregion
+
 # Import the Chocolatey Profile that contains the necessary code to enable
 # tab-completions to function for `choco`.
 # Be aware that if you are missing these lines from your profile, tab completion

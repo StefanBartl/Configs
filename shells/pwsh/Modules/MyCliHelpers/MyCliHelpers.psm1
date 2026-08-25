@@ -645,6 +645,233 @@ function Test-ProfileHealth {
 Set-Alias -Name checkhealth -Value Test-ProfileHealth
 #endregion
 
+#region ── Repo-Sprung ────────────────────────────────────────────────────────
+# `spotlight` → cd $env:REPOS_DIR\spotlight.nvim, ohne dass irgendwo 38 Namen
+# gepflegt werden. Konzept und Begründungen: docs/KONZEPT-REPO-SPRUNG.md
+#
+# Es wird nichts vorberechnet und nichts generiert: die Auflösung läuft beim
+# Tippen, nicht beim Shellstart. Ein frisch geklontes Repo funktioniert damit
+# sofort, ohne einen erneuten Installer-Lauf.
+#
+# Der command-not-found-Hook, der den bloßen Namen abfängt, steht im Profil —
+# er verändert Session-State und gehört deshalb nicht in den Modul-Scope.
+
+# Interner Helfer: alle Direktkinder von $REPOS_DIR, die ein .git tragen.
+# Test-Path statt -PathType Container, weil .git bei Worktrees und Submodulen
+# eine Datei ist und kein Verzeichnis.
+function Get-RepoCandidate {
+    [OutputType([System.IO.DirectoryInfo[]])]
+    param()
+
+    $root = Get-ReposRoot
+    if (-not (Test-Path -LiteralPath $root)) { return @() }
+
+    Get-ChildItem -LiteralPath $root -Directory -ErrorAction SilentlyContinue |
+        Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName '.git') }
+}
+
+# Interner Helfer: die drei akzeptierten Schreibweisen eines Repo-Namens —
+# voll (spotlight.nvim), Punkt→Bindestrich (spotlight-nvim), Stamm (spotlight).
+function Get-RepoNameForm {
+    [OutputType([string[]])]
+    param([Parameter(Mandatory, Position = 0)][string]$Name)
+
+    if ($Name.Contains('.')) {
+        return @($Name, $Name.Replace('.', '-'), $Name.Split('.')[0])
+    }
+    return @($Name)
+}
+
+# Resolve-Repo : Suchbegriff → Pfad(e). Gibt nur die beste Trefferstufe zurück:
+# ein exakter Treffer verdrängt Präfix-Treffer, Präfix verdrängt Substring.
+# -Strict lässt die Substring-Stufe weg — der Modus für den Hook, damit ein
+# Tippfehler ein Fehler bleibt und nicht in einem überraschenden cd endet.
+function Resolve-Repo {
+    [CmdletBinding()]
+    [OutputType([string[]])]
+    param(
+        [Parameter(Mandatory, Position = 0)][string]$Query,
+        [switch]$Strict
+    )
+
+    $root = Get-ReposRoot
+    if (-not (Test-Path -LiteralPath $root)) { return @() }
+
+    # Direkter Treffer zuerst: zwei Test-Path statt eines Verzeichnis-Scans.
+    # Das ist der Normalfall; gescannt wird nur bei unscharfer Suche.
+    foreach ($candidate in @($Query, "$Query.nvim")) {
+        $path = Join-Path $root $candidate
+        if ((Test-Path -LiteralPath $path -PathType Container) -and
+            (Test-Path -LiteralPath (Join-Path $path '.git'))) {
+            return @((Get-Item -LiteralPath $path).FullName)
+        }
+    }
+
+    $q = $Query.ToLowerInvariant()
+    $exact = [System.Collections.Generic.List[string]]::new()
+    $prefix = [System.Collections.Generic.List[string]]::new()
+    $substr = [System.Collections.Generic.List[string]]::new()
+
+    foreach ($dir in Get-RepoCandidate) {
+        foreach ($form in Get-RepoNameForm $dir.Name) {
+            $f = $form.ToLowerInvariant()
+            if ($f -eq $q) { $exact.Add($dir.FullName); break }
+            elseif ($f.StartsWith($q)) { $prefix.Add($dir.FullName) }
+            elseif (-not $Strict -and $f.Contains($q)) { $substr.Add($dir.FullName) }
+        }
+    }
+
+    # Select-Object -Unique, weil derselbe Pfad über mehrere Schreibweisen trifft.
+    if ($exact.Count) { return @($exact | Select-Object -Unique) }
+    if ($prefix.Count) { return @($prefix | Select-Object -Unique) }
+    return @($substr | Select-Object -Unique)
+}
+
+# Interner Helfer: wechseln und zoxide mitlernen lassen, damit `z` mit der Zeit
+# von selbst richtig liegt.
+function Set-RepoLocation {
+    [CmdletBinding()]
+    param([Parameter(Mandatory, Position = 0)][string]$Path)
+
+    Set-Location -LiteralPath $Path
+    if (Test-HasCommand 'zoxide') { & zoxide add $Path 2>$null }
+}
+
+# Interner Helfer: Auswahl aus mehreren Kandidaten. Steuerbar über
+# $env:REPO_JUMP_PICKER — leer = fzf falls vorhanden, sonst Liste; fzf; list; none.
+# Ohne interaktive Konsole gilt immer none: kein blockierender Prompt in Skripten.
+function Select-RepoCandidate {
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string[]]$Path)
+
+    $mode = $env:REPO_JUMP_PICKER
+    if ([Console]::IsInputRedirected) { $mode = 'none' }
+    elseif (-not $mode) { $mode = if (Test-HasCommand 'fzf') { 'fzf' } else { 'list' } }
+
+    switch ($mode) {
+        'fzf' {
+            $pick = $Path | Split-Path -Leaf | & fzf --height 40% --layout=reverse --prompt 'repo> '
+            if ($pick) {
+                return ($Path | Where-Object { (Split-Path -Leaf $_) -eq $pick } | Select-Object -First 1)
+            }
+            return $null
+        }
+        'list' {
+            for ($i = 0; $i -lt $Path.Count; $i++) {
+                Write-Host ('  [{0}] {1}' -f ($i + 1), (Split-Path -Leaf $Path[$i]))
+            }
+            $sel = Read-Host 'Auswahl (leer = Abbruch)'
+            if ($sel -match '^\d+$' -and [int]$sel -ge 1 -and [int]$sel -le $Path.Count) {
+                return $Path[[int]$sel - 1]
+            }
+            return $null
+        }
+        default {
+            $names = ($Path | ForEach-Object { Split-Path -Leaf $_ }) -join ', '
+            Write-Host "[repo] mehrdeutig: $names" -ForegroundColor Yellow
+            Write-Host '[repo] genauer tippen oder $env:REPO_JUMP_PICKER = ''fzf'' setzen' -ForegroundColor DarkYellow
+            return $null
+        }
+    }
+}
+
+# repo : expliziter Sprung in ein Repo unter $env:REPOS_DIR.
+# Nötig für alles, was der Hook im Profil nicht erreichen kann: Namen, die echte
+# Kommandos sind (`diff` aus diff.nvim), und mehrdeutige Begriffe.
+# Ohne Argument: Auswahl über alle Repos.
+function repo {
+    [CmdletBinding()]
+    param([Parameter(Position = 0)][string]$Name)
+
+    $root = Get-ReposRoot
+    if (-not (Test-Path -LiteralPath $root)) {
+        Write-Host "[error] Repos-Verzeichnis nicht gefunden: $root (setze `$env:REPOS_DIR)" -ForegroundColor Red
+        return
+    }
+
+    # Die Klammer um das if gehoert dazu: PowerShell entrollt ein einelementiges
+    # Array beim Zuweisen aus einem if-Ausdruck, $hits waere dann ein String und
+    # $hits[0] dessen erstes Zeichen.
+    $hits = @(if ($Name) {
+            Resolve-Repo -Query $Name
+        } else {
+            Get-RepoCandidate | ForEach-Object FullName
+        })
+
+    switch ($hits.Count) {
+        0 { Write-Host "[error] Kein Repo gefunden für '$Name' in $root" -ForegroundColor Red }
+        1 { Set-RepoLocation $hits[0] }
+        default {
+            $pick = Select-RepoCandidate -Path $hits
+            if ($pick) { Set-RepoLocation $pick }
+        }
+    }
+}
+
+Register-ArgumentCompleter -CommandName repo -ParameterName Name -ScriptBlock {
+    param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+
+    $word = $wordToComplete.Trim("'", '"')
+    Get-RepoCandidate |
+        ForEach-Object { Get-RepoNameForm $_.Name } |
+        Sort-Object -Unique |
+        Where-Object { $_ -like "$word*" } |
+        ForEach-Object {
+            [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+        }
+}
+
+# Interner Helfer: Ablageort der Stempeldatei. Plattformlogik an einer Stelle.
+function Get-RepoSeedStampPath {
+    [OutputType([string])]
+    param()
+
+    if ($env:LOCALAPPDATA) { return (Join-Path $env:LOCALAPPDATA 'pwsh\cache\repos_seed.stamp') }
+    $base = if ($env:XDG_CACHE_HOME) { $env:XDG_CACHE_HOME } else { Join-Path $HOME '.cache' }
+    return (Join-Path $base 'pwsh/repos_seed.stamp')
+}
+
+# Update-RepoSeed : trägt alle Repos in die zoxide-Datenbank ein, damit
+# `z wkdbooks` auch ein Repo findet, das noch nie besucht wurde — zoxide kennt
+# nur, was in seiner DB steht, und hat keinen Hook für externe Quellen.
+#
+# Die Stempeldatei hält die LastWriteTime von $REPOS_DIR fest. Die ändert sich
+# beim Anlegen oder Löschen eines Repos — also genau dann, wenn neu geseedet
+# werden muss. Normaler Start: ein Get-Item und ein Dateilesevorgang, kein
+# Subprozess. Das ist kein Cache: es wird kein Ergebnis aufbewahrt.
+function Update-RepoSeed {
+    [CmdletBinding()]
+    param([switch]$Force)
+
+    if (-not (Test-HasCommand 'zoxide')) { return }
+
+    $root = Get-ReposRoot
+    if (-not (Test-Path -LiteralPath $root)) { return }
+
+    $stamp = Get-RepoSeedStampPath
+    $now = (Get-Item -LiteralPath $root).LastWriteTimeUtc.Ticks.ToString()
+
+    if (-not $Force -and (Test-Path -LiteralPath $stamp)) {
+        $seen = (Get-Content -LiteralPath $stamp -Raw -ErrorAction SilentlyContinue)
+        if ($seen -and $seen.Trim() -eq $now) { return }
+    }
+
+    $paths = @(Get-RepoCandidate | ForEach-Object FullName)
+    if (-not $paths) { return }
+
+    # Ein Subprozess für alle Pfade. Ohne --score: der Standard-Zuwachs von 1 ist
+    # bereits der niedrigste sinnvolle Startwert, damit echte Besuche gewinnen.
+    & zoxide add @paths 2>$null
+    if ($LASTEXITCODE -ne 0) { return }
+
+    # Stempel erst NACH dem erfolgreichen Seeding schreiben: bricht das Seeding
+    # ab, gilt beim nächsten Start weiterhin als ungeseedet.
+    $dir = Split-Path $stamp
+    if (-not (Test-Path $dir)) { $null = New-Item -ItemType Directory -Path $dir -Force }
+    [System.IO.File]::WriteAllText($stamp, $now, [System.Text.UTF8Encoding]::new($false))
+}
+#endregion
+
 # ==============================================================================
 # Export
 # ==============================================================================
