@@ -1,7 +1,7 @@
-# ==============================================================================
+﻿# ==============================================================================
 # MyCliHelpers.psm1
 # ==============================================================================
-# Cross-platform-freundliche Shell-Helfer für Windows PowerShell 7+.
+# Cross-platform-freundliche Shell-Helfer für Windows PowerShell 5.1 und 7+.
 #
 # Pfade:
 #   Quelle:  $env:REPOS_DIR\Configs\shells\pwsh\Modules\MyCliHelpers\
@@ -13,7 +13,8 @@
 #   – Funktionen wie `ls`, `mkcd`, `gg` nutzen Unix-vertraute Kurznamen statt
 #     Verb-Noun-Konvention. Import mit -DisableNameChecking, um die Warnung zu
 #     unterdrücken.
-#   – Windows-spezifische Funktionen sind mit $IsWindows-Guards versehen.
+#   – Windows-spezifische Funktionen sind mit $script:_isWindows-Guards
+#     versehen; $IsWindows selbst gibt es erst ab PowerShell 6.
 #   – Alle Pfade werden aus Umgebungsvariablen abgeleitet – keine hardcodierten
 #     User-Pfade. Plattformabhängiges steckt in Get-ReposRoot und
 #     Get-NvimDirectory, nicht verstreut in den einzelnen Funktionen.
@@ -24,9 +25,17 @@
 # Gecacht auf Modul-Ebene ($script:): teuer nur beim ersten Import, dann O(1).
 # Path ändert sich in einer Session nicht – daher ist einmaliges Cachen sicher.
 
+# Plattform-Flag: $IsWindows existiert erst ab PowerShell 6. Windows PowerShell
+# 5.1 laeuft ausschliesslich unter Windows, dort ist das Flag also immer $true.
+$script:_isWindows = if ($PSVersionTable.PSVersion.Major -lt 6) { $true } else { [bool]$IsWindows }
+
 # ls-Executable: Git-for-Windows ls.exe bevorzugt, dann jede Application 'ls'
-$script:_lsExe = (Get-Command 'ls.exe' -CommandType Application -ErrorAction SilentlyContinue) ??
-                 (Get-Command 'ls'      -CommandType Application -ErrorAction SilentlyContinue)
+# Kein ??-Operator: den gibt es erst ab PowerShell 7, das Modul wird aber auch
+# von Windows PowerShell 5.1 importiert.
+$script:_lsExe = Get-Command 'ls.exe' -CommandType Application -ErrorAction SilentlyContinue
+if (-not $script:_lsExe) {
+    $script:_lsExe = Get-Command 'ls' -CommandType Application -ErrorAction SilentlyContinue
+}
 
 # Session-Cache für Test-HasCommand (innerhalb des Moduls)
 $script:_cmdCache = [System.Collections.Generic.Dictionary[string, bool]]::new(8)
@@ -80,7 +89,7 @@ function ~ { Set-Location $HOME }
 function Get-NvimDirectory {
     param([Parameter(Mandatory)][ValidateSet('config', 'data')][string]$Kind)
 
-    if ($IsWindows) {
+    if ($script:_isWindows) {
         $leaf = if ($Kind -eq 'config') { 'nvim' } else { 'nvim-data' }
         return Join-Path $env:LOCALAPPDATA $leaf
     }
@@ -115,7 +124,7 @@ function nvim-data {
 # haengt an der Plattform, damit 'C:\repos' nicht unter Linux vorgeschlagen wird.
 function Get-ReposRoot {
     if ($env:REPOS_DIR) { return $env:REPOS_DIR }
-    if ($IsWindows) { return 'C:\repos' }
+    if ($script:_isWindows) { return 'C:\repos' }
     return (Join-Path $HOME 'repos')
 }
 
@@ -135,7 +144,7 @@ function Configs {
 
 # appdata : Wechsel ins AppData-Verzeichnis (Windows-only)
 function appdata {
-    if (-not $IsWindows) { Write-Host '[error] appdata ist Windows-only' -ForegroundColor Red; return }
+    if (-not $script:_isWindows) { Write-Host '[error] appdata ist Windows-only' -ForegroundColor Red; return }
 
     $p = Join-Path $env:USERPROFILE 'AppData'
     if (Test-Path $p) { Set-Location $p }
@@ -241,7 +250,7 @@ function Open-Explorer {
 
     if (-not (Test-Path $Path)) { Write-Host "Nicht gefunden: $Path" -ForegroundColor Red; return }
 
-    if (-not $IsWindows) { Write-Host '[error] Open-Explorer ist Windows-only' -ForegroundColor Red; return }
+    if (-not $script:_isWindows) { Write-Host '[error] Open-Explorer ist Windows-only' -ForegroundColor Red; return }
 
     $full = (Resolve-Path $Path).Path
     if (Test-Path $full -PathType Leaf) { Start-Process explorer.exe "/select,`"$full`"" }
@@ -309,7 +318,7 @@ function o {
 
 # Elevate-Shell : Neue erhöhte Shell mit der aktuellen PS-Version
 function Elevate-Shell {
-    if (-not $IsWindows) { Write-Host '[error] Elevation ist Windows-only' -ForegroundColor Red; return }
+    if (-not $script:_isWindows) { Write-Host '[error] Elevation ist Windows-only' -ForegroundColor Red; return }
     # Nutzt den Pfad des laufenden Prozesses – funktioniert für pwsh.exe und powershell.exe
     $exe = (Get-Process -Id $PID).MainModule.FileName
     Start-Process -Verb RunAs -FilePath $exe
@@ -318,7 +327,7 @@ function Elevate-Shell {
 # Elevate-StarshipShell : Erhöhte Shell ohne separates Starship-Argument
 # (Profil wird automatisch geladen, Starship initialisiert sich selbst)
 function Elevate-StarshipShell {
-    if (-not $IsWindows) { Write-Host '[error] Elevation ist Windows-only' -ForegroundColor Red; return }
+    if (-not $script:_isWindows) { Write-Host '[error] Elevation ist Windows-only' -ForegroundColor Red; return }
     $exe = (Get-Process -Id $PID).MainModule.FileName
     Start-Process -Verb RunAs -FilePath $exe -ArgumentList '-NoExit'
 }
@@ -550,7 +559,7 @@ function Test-ProfileHealth {
     }
 
     # --- Modul-Pfad (das OneDrive-Thema) ---------------------------------
-    if ($IsWindows) {
+    if ($script:_isWindows) {
         $localModules = Join-Path $env:LOCALAPPDATA 'PowerShell\Modules'
         $localMyCli   = Join-Path $localModules 'MyCliHelpers'
 
