@@ -3,10 +3,10 @@
 ## Table of content
 
 - [Cheatsheet `_vsvim`](#cheatsheet-_vsvim)
-  - [Allgemeine Einstellungen & Modus-Wechsel](#allgemeine-einstellungen-modus-wechsel)
+  - [Allgemeine Einstellungen & Modus-Wechsel](#allgemeine-einstellungen--modus-wechsel)
   - [Allgemeine Bearbeitung (General)](#allgemeine-bearbeitung-general)
-  - [Text verschieben & Formatieren (Editing)](#text-verschieben-formatieren-editing)
-  - [Fenster & Tab-Management (Buf_Win_Tab)](#fenster-tab-management-buf_win_tab)
+  - [Text verschieben & Formatieren (Editing)](#text-verschieben--formatieren-editing)
+  - [Fenster & Tab-Management (Buf_Win_Tab)](#fenster--tab-management-buf_win_tab)
 
 ---
 
