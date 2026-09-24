@@ -101,8 +101,8 @@ function Get-NvimDirectory {
     return Join-Path $base 'nvim'
 }
 
-# nvim-config : Wechsel ins Neovim-Config-Verzeichnis und öffnet nvim
-function nvim-config {
+# nvimconfig : Wechsel ins Neovim-Config-Verzeichnis und öffnet nvim
+function nvimconfig {
     # Pfad aus Umgebungsvariablen – funktioniert für jeden User, jede Maschine
     $cfgDir = Get-NvimDirectory -Kind config
     if (-not (Test-Path $cfgDir)) {
@@ -113,8 +113,8 @@ function nvim-config {
     if (Test-HasCommand 'nvim') { nvim }
 }
 
-# nvim-data : Wechsel ins Neovim-Data-Verzeichnis
-function nvim-data {
+# nvimdata : Wechsel ins Neovim-Data-Verzeichnis
+function nvimdata {
     $dataDir = Get-NvimDirectory -Kind data
     if (Test-Path $dataDir) { Set-Location $dataDir }
     else { Write-Host "[error] Nicht gefunden: $dataDir" -ForegroundColor Red }
@@ -316,17 +316,17 @@ function o {
 
 #region ── Elevation ──────────────────────────────────────────────────────────
 
-# Elevate-Shell : Neue erhöhte Shell mit der aktuellen PS-Version
-function Elevate-Shell {
+# Start-ElevatedShell : Neue erhöhte Shell mit der aktuellen PS-Version
+function Start-ElevatedShell {
     if (-not $script:_isWindows) { Write-Host '[error] Elevation ist Windows-only' -ForegroundColor Red; return }
     # Nutzt den Pfad des laufenden Prozesses – funktioniert für pwsh.exe und powershell.exe
     $exe = (Get-Process -Id $PID).MainModule.FileName
     Start-Process -Verb RunAs -FilePath $exe
 }
 
-# Elevate-StarshipShell : Erhöhte Shell ohne separates Starship-Argument
+# Start-ElevatedStarshipShell : Erhöhte Shell ohne separates Starship-Argument
 # (Profil wird automatisch geladen, Starship initialisiert sich selbst)
-function Elevate-StarshipShell {
+function Start-ElevatedStarshipShell {
     if (-not $script:_isWindows) { Write-Host '[error] Elevation ist Windows-only' -ForegroundColor Red; return }
     $exe = (Get-Process -Id $PID).MainModule.FileName
     Start-Process -Verb RunAs -FilePath $exe -ArgumentList '-NoExit'
