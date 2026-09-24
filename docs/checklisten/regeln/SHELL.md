@@ -13,7 +13,7 @@ Dateien unter `shells/`. Prioritäten-Legende:
 | `SH-01` | Keine Benutzerpfade im Code | Nie `C:\Users\<name>\...`. Immer `$env:LOCALAPPDATA`, `$HOME`, `$env:REPOS_DIR`, `$XDG_CONFIG_HOME`. | 🔴 KRITISCH | pwsh-ROADMAP #8 |
 | `SH-02` | Plattformlogik bündeln | Plattformabhängige Pfade stehen in **einer** Funktion, nicht verstreut in jeder aufrufenden Stelle. | 🟡 EMPFOHLEN | `Get-ReposRoot`, `Get-NvimDirectory` in `MyCliHelpers` |
 | `SH-03` | `$HOME` statt `$env:USERPROFILE` | In PowerShell ist `$HOME` auf jeder Plattform gesetzt, `$env:USERPROFILE` nur unter Windows. | 🟡 EMPFOHLEN | pwsh-ROADMAP #25 |
-| `SH-04` | Windows-only kennzeichnen | Funktionen, die es nur unter Windows gibt, beginnen mit `if (-not $IsWindows) { ...; return }` statt mit einem unverständlichen Folgefehler. | 🟡 EMPFOHLEN | `Open-Explorer`, `Elevate-Shell`, `appdata` |
+| `SH-04` | Windows-only kennzeichnen | Funktionen, die es nur unter Windows gibt, beginnen mit `if (-not $IsWindows) { ...; return }` statt mit einem unverständlichen Folgefehler. | 🟡 EMPFOHLEN | `Open-Explorer`, `Start-ElevatedShell`, `appdata` |
 | `SH-05` | Skriptrelativ arbeiten | Ein Installer bestimmt die Repo-Wurzel aus seinem eigenen Pfad, nicht aus dem aktuellen Arbeitsverzeichnis. | 🟡 EMPFOHLEN | `install.sh`/`install.ps1` laufen aus jedem `cwd` |
 | `SH-06` | Zeilenenden festnageln | `.gitattributes` erzwingt LF für alles, was unter Unix ausgeführt wird. | 🔴 KRITISCH | Ein CRLF im Shebang macht `install.sh` unter Linux unbrauchbar — deshalb entstand `.gitattributes` |
 

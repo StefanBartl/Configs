@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Configs — Installer fuer Windows.
 
@@ -405,7 +405,7 @@ foreach ($name in $selected) {
 if ($selected -contains 'pwsh' -and $docsDir -like '*OneDrive*') {
     Write-Info 'Hinweis: "Eigene Dokumente" ist nach OneDrive umgeleitet. Die Profildatei'
     Write-Info '         muss dort liegen (Windows-Vorgabe), die Module gehen aber nach'
-    Write-Info "         $env:LOCALAPPDATA\PowerShell\Modules — kein Sync-Layer beim Import."
+    Write-Info "         $($env:LOCALAPPDATA)\PowerShell\Modules — kein Sync-Layer beim Import."
 }
 
 Initialize-Submodules
