@@ -121,7 +121,7 @@ Merge ist die richtige Richtung — aber nicht in diesen Zustand hinein.
 |---|---|---|---|---|
 | **A — Dotfiles** | zsh, pwsh, wezterm, kitty, tmux, starship, bash, CLI-Tools | Symlink / Loader | 1 Repo, public, klein | bleibt in `Configs`, Umbau offen (Abschnitt 3–4) |
 | **B — Assets & Backups** | Fonts, VPN, iCue, Audio, Bookmarks, Software-Listen, Gaomon | wird nie verlinkt | privates Repo | ✅ migriert nach [`StefanBartl/machine-assets`](https://github.com/StefanBartl/machine-assets) (privat), 2026-08-20 |
-| **C — Eigenständige Projekte** | `OpenInNvim` (C#-App) | eigenes Build/Deploy | eigenes Repo | ✅ migriert nach [`StefanBartl/open-in-nvim`](https://github.com/StefanBartl/open-in-nvim) (public), 2026-08-20 |
+| **C — Eigenständige Projekte** | `OpenInNvim` (C#-App) | eigenes Build/Deploy | eigenes Repo | ✅ migriert nach [`StefanBartl/openinnvim`](https://github.com/StefanBartl/openinnvim) (public), 2026-08-20 |
 | **D — Secrets** | API-Keys, VPN-Schlüssel | Runtime-Load | nie in Git (`my-zsh`-Muster) | ✅ erledigt, siehe Abschnitt 0 |
 
 Layer A ist exakt die Menge, die gemeinsam installiert wird und sich
@@ -138,7 +138,7 @@ Bei der Migration von `Windows/Contextmenu/OpenInNvim/` fiel auf: `bin/`, `obj/`
 und `publish/*.exe` (zwei self-contained .NET-Singlefile-Exes, ~66 MB je Datei,
 zusammen ~214 MB) lagen zwar im Arbeitsverzeichnis, waren aber **nie
 Git-getrackt** (`git ls-files` liefert dafür nichts) — reiner lokaler
-Build-Output ohne Auswirkung auf die Repo-Größe. `open-in-nvim` hat jetzt ein
+Build-Output ohne Auswirkung auf die Repo-Größe. `openinnvim` hat jetzt ein
 `.gitignore` dafür, damit das so bleibt.
 
 `Configs` selbst wurde per `git rm` von `Fonts/`, `VPN/`, `Settings_Profiles/`,
@@ -168,7 +168,7 @@ dotfiles/                  (public, wenige MB — heutiges Configs, entkernt)
     └── install.sh         <- my-zsh INSTRUCTIONS.md, als Skript
 
 machine-assets/            (PRIVAT — Fonts, VPN, iCue, Bookmarks, Audio)
-open-in-nvim/              (eigenes Repo — die C#-Anwendung)
+openinnvim/                (eigenes Repo — die C#-Anwendung)
 ```
 
 ### Tatsächlich umgesetzt (Schritt 4, 2026-08-20)
