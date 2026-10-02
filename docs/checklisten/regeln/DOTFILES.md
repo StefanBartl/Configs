@@ -13,7 +13,7 @@ Die Naht verläuft nach **Lebenszyklus**, nicht nach Tool — Begründung in
 | ID | Regel | Beschreibung | Priorität | Beleg |
 | -- | ----- | ------------ | --------- | ----- |
 | `DOT-01` | Nur Layer A | Hier liegt ausschließlich, was symlinkt und gemeinsam installiert wird. Assets, Backups, Profile, Inventare gehören nach `machine-assets` (privat). | 🔴 KRITISCH | Fonts, VPN-Profile, Bookmarks blähten das Repo auf 89,7 MB — [RESTRUCTURE § 1](../../RESTRUCTURE.md) |
-| `DOT-02` | Eigenständige Projekte raus | Was einen eigenen Build, eigenes Deploy und eigene Roadmap hat, ist ein eigenes Repo. | 🔴 KRITISCH | `OpenInNvim` (C#-App mit `.csproj`) lag jahrelang in einem Dotfiles-Repo → `open-in-nvim` |
+| `DOT-02` | Eigenständige Projekte raus | Was einen eigenen Build, eigenes Deploy und eigene Roadmap hat, ist ein eigenes Repo. | 🔴 KRITISCH | `OpenInNvim` (C#-App mit `.csproj`) lag jahrelang in einem Dotfiles-Repo → `openinnvim` |
 | `DOT-03` | Keine Binaries, keine Archive | Downloadbares wird nicht versioniert. Ausnahmen brauchen einen Grund in der Datei daneben. | 🔴 KRITISCH | `marksman.exe` (18,9 MB) und sieben Font-ZIPs mussten per `filter-repo` aus der History |
 | `DOT-04` | Kein Build-Output | `bin/`, `obj/`, `publish/`, `node_modules/` gehören in `.gitignore`, nicht ins Repo. | 🟡 EMPFOHLEN | 213 MB Build-Output lagen im Arbeitsverzeichnis; nur Glück, dass sie nie getrackt waren |
 | `DOT-05` | Ein Ort pro Konfiguration | Was zwei Plattformen nutzen, liegt einmal da. `prompt/starship.toml` wird von zsh **und** pwsh geladen — nicht duplizieren, nicht pro Plattform forken. | 🔴 KRITISCH | Genau diese Datei war der Grund, die Naht *nicht* pro Tool zu legen |
