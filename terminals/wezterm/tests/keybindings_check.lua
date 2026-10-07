@@ -37,11 +37,11 @@ package.loaded["wezterm"] = {
 	on = function() end,
 }
 
---- Load keybindings.lua (optionally with `shell_panes` changed) and return the CTRL+j callback.
+--- Load keybindings.lua (optionally with `shell_panes` changed) and return the CTRL+<h|j|k> callbacks.
 ---@param shell_panes string|nil
----@return fun(window: table, pane: table)
+---@return table<string, fun(window: table, pane: table)> callbacks By key name
 ---@return table calls { is_nvim = integer }
-local function load_callback(shell_panes)
+local function load_callbacks(shell_panes)
 	local calls = { is_nvim = 0 }
 	package.loaded["config.nvim_status"] = {
 		is_nvim = function(pane)
@@ -59,12 +59,13 @@ local function load_callback(shell_panes)
 	local configure = assert(load(source, "keybindings.lua"))()
 	local Config = {}
 	configure(Config)
+	local callbacks = {}
 	for _, key in ipairs(Config.keys) do
-		if key.key == "j" and key.mods == "CTRL" and key.action.callback then
-			return key.action.callback, calls
+		if key.mods == "CTRL" and type(key.action) == "table" and key.action.callback then
+			callbacks[key.key] = key.action.callback
 		end
 	end
-	error("no CTRL+j navigation callback found")
+	return callbacks, calls
 end
 
 local function perform(callback, pane)
@@ -78,25 +79,51 @@ local function perform(callback, pane)
 	return performed
 end
 
+-- The directions each key moves to in "navigate" mode (<C-l> is deliberately not bound).
+local DIRECTION = { h = "Left", j = "Down", k = "Up" }
+
 -- Default ("send"): every pane gets the key; the pane is not even looked at.
-local callback, calls = load_callback()
-local act = perform(callback, { nvim = true })
-check("send mode: a Neovim pane gets the key", act and act.action == "SendKey" and act.arg.key == "j")
-act = perform(callback, { nvim = false })
-check("send mode: a shell pane gets the key too", act and act.action == "SendKey")
+local callbacks, calls = load_callbacks()
+local bound = vim.tbl_keys(callbacks)
+table.sort(bound)
+check(
+	"exactly CTRL+h, CTRL+j and CTRL+k are bound (<C-l> stays the shell's)",
+	vim.deep_equal(bound, { "h", "j", "k" }),
+	bound
+)
+for _, key in ipairs({ "h", "j", "k" }) do
+	local act = perform(callbacks[key], { nvim = true })
+	check(
+		("send mode: CTRL+%s in a Neovim pane sends %s"):format(key, key),
+		act and act.action == "SendKey" and act.arg.key == key and act.arg.mods == "CTRL",
+		act
+	)
+	act = perform(callbacks[key], { nvim = false })
+	check(
+		("send mode: CTRL+%s in a shell pane sends it too"):format(key),
+		act and act.action == "SendKey" and act.arg.key == key,
+		act
+	)
+end
 check("send mode: is_nvim (user vars + foreground process) is never evaluated", calls.is_nvim == 0, calls.is_nvim)
 
 -- "navigate": a shell pane moves between WezTerm panes, a Neovim pane still gets the key.
-callback, calls = load_callback("navigate")
-act = perform(callback, { nvim = true })
-check("navigate mode: a Neovim pane gets the key", act and act.action == "SendKey")
-act = perform(callback, { nvim = false })
-check(
-	"navigate mode: a shell pane moves to the pane below",
-	act and act.action == "ActivatePaneDirection" and act.arg == "Down",
-	act
-)
-check("navigate mode: is_nvim decides (asked twice)", calls.is_nvim == 2, calls.is_nvim)
+callbacks, calls = load_callbacks("navigate")
+for _, key in ipairs({ "h", "j", "k" }) do
+	local act = perform(callbacks[key], { nvim = true })
+	check(
+		("navigate mode: CTRL+%s in a Neovim pane sends %s"):format(key, key),
+		act and act.action == "SendKey" and act.arg.key == key,
+		act
+	)
+	act = perform(callbacks[key], { nvim = false })
+	check(
+		("navigate mode: CTRL+%s in a shell pane moves %s"):format(key, DIRECTION[key]),
+		act and act.action == "ActivatePaneDirection" and act.arg == DIRECTION[key],
+		act
+	)
+end
+check("navigate mode: is_nvim decides (asked once per press and key, six times)", calls.is_nvim == 6, calls.is_nvim)
 
 print(failed and "RESULT failed" or "RESULT ok")
 os.exit(failed and 1 or 0)
