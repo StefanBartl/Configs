@@ -11,6 +11,7 @@
 --- * Avoid global `utf8` by doing UTF-8 aware byte-iteration for left-truncation.
 
 local wezterm = require("wezterm")
+local nvim_status = require("config.nvim_status")
 
 ----------------------------------------------------------------
 -- Options
@@ -437,8 +438,12 @@ local function ensure_flip_ticker()
       return
     end
     for _, win in ipairs(gui.windows()) do
-      -- Cheap redraw trigger
-      win:set_right_status("")
+      -- Cheap redraw trigger: re-set the current text (clearing it would erase the Neovim
+      -- status that update-right-status put there).
+      local ok, current = pcall(function()
+        return win:get_right_status()
+      end)
+      win:set_right_status(ok and current or "")
     end
   end
 
@@ -468,8 +473,15 @@ wezterm.on("window-config-reloaded", function(window, _)
   window:set_right_status("")
 end)
 
-wezterm.on("update-right-status", function(window, _)
-  window:set_right_status("")
+wezterm.on("update-right-status", function(window, pane)
+  -- Mode, branch and diagnostics of the Neovim in the focused pane; empty for any other pane.
+  local st = pane and nvim_status.read(pane) or nil
+  local items = nvim_status.right_status(st)
+  if #items == 0 then
+    window:set_right_status("")
+  else
+    window:set_right_status(wezterm.format(items))
+  end
 end)
 
 ----------------------------------------------------------------
@@ -482,6 +494,12 @@ wezterm.on("format-tab-title", function(tab, _tabs, _panes, config, _hover, _max
   local mode = current_mode()
 
   local title = (mode == "process") and build_process_title(pane) or build_cwd_title(pane)
+  -- A Neovim with terminal.nvim in the pane publishes what it is doing (see config/nvim_status.lua):
+  -- file name, modified flag, diagnostics. Without it (or after it left) the title stays as above.
+  local nvim_st = nvim_status.read(pane)
+  if nvim_st then
+    title = " " .. nvim_status.tab_title(nvim_st)
+  end
   if wezterm.column_width(title) > OPT.max_title_len then
     title = wezterm.truncate_right(title, OPT.max_title_len)
   end
