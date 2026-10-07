@@ -37,6 +37,10 @@ accept both, so the tab title works as well as the right status.
 
 `tests/nvim_status_check.lua` checks all of this without WezTerm (stubbed `wezterm` module):
 `nvim --headless -u NONE -l terminals/wezterm/tests/nvim_status_check.lua`.
+`tests/keybindings_check.lua` does the same for the navigation keys (`nvim --headless -u NONE -l
+terminals/wezterm/tests/keybindings_check.lua`); `terminals/tmux/tests/tmux_conf_check.sh` loads `tmux.conf` into a
+private tmux server and checks the file itself (loads without errors, TPM once, status-right guard, no `$NVIM` in
+the panes): `bash terminals/tmux/tests/tmux_conf_check.sh`, or through WSL on Windows.
 
 ## Options
 
