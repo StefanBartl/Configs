@@ -38,3 +38,15 @@ pane's foreground process still looks like Neovim (`require_nvim_process`).
 
 `nvim_status.is_nvim(pane)` is true when a Neovim with terminal.nvim runs in the pane — the
 test a key binding needs to decide "pass this key to Neovim or handle it in WezTerm".
+
+## Navigation keys
+
+`config/keybindings.lua` binds `<C-h>`, `<C-j>` and `<C-k>` (not `<C-l>`: it stays the shell's
+clear-screen, like terminal.nvim's `window_right`). Where a Neovim with terminal.nvim runs
+(`is_nvim`), the key is sent to it unchanged: Neovim moves between its own windows and, at its
+edge, asks WezTerm itself (`wezterm cli activate-pane-direction`, see terminal.nvim
+`docs/navigation.md`). In any other pane the key keeps its shell meaning (`<C-j>` newline,
+`<C-k>` kill-line, `<C-h>` backspace). Set `NAVIGATION.shell_panes = "navigate"` to make the
+keys move between WezTerm panes there too, like vim-tmux-navigator, at the price of those
+shell bindings. `NAVIGATION.enabled = false` removes the bindings.
+

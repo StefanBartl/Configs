@@ -3,6 +3,21 @@
 
 local wezterm = require("wezterm")
 local act = wezterm.action
+local nvim_status = require("config.nvim_status")
+
+-- Seamless navigation between Neovim windows and WezTerm panes (terminal.nvim, docs/navigation.md).
+--
+-- A key is sent to the pane unchanged when a Neovim runs in it: Neovim moves between its own windows
+-- and, at its edge, asks WezTerm itself (`wezterm cli activate-pane-direction`). In any other pane
+-- the keys keep their shell meaning (<C-j> newline, <C-k> kill-line, <C-h> backspace) unless
+-- `shell_panes = "navigate"`, which makes them move between WezTerm panes like vim-tmux-navigator.
+-- <C-l> is not bound: it stays the shell's clear-screen (terminal.nvim's `window_right` is off too).
+local NAVIGATION = {
+	enabled = true,
+	mods = "CTRL",
+	keys = { h = "Left", j = "Down", k = "Up" },
+	shell_panes = "send", -- "send" | "navigate"
+}
 
 -- local function bind(keys, key, mods, dir)
 -- 	keys[#keys + 1] = { key = key, mods = mods, action = act.ActivatePaneDirection(dir) }
@@ -84,6 +99,22 @@ return function(Config)
 			action = wezterm.action.ShowLauncher,
 		},
 	}
+
+	if NAVIGATION.enabled then
+		for key, direction in pairs(NAVIGATION.keys) do
+			Config.keys[#Config.keys + 1] = {
+				key = key,
+				mods = NAVIGATION.mods,
+				action = wezterm.action_callback(function(window, pane)
+					if nvim_status.is_nvim(pane) or NAVIGATION.shell_panes ~= "navigate" then
+						window:perform_action(act.SendKey({ key = key, mods = NAVIGATION.mods }), pane)
+					else
+						window:perform_action(act.ActivatePaneDirection(direction), pane)
+					end
+				end),
+			}
+		end
+	end
 
 	-- Workaround (windows)
 	-- bind(Config.keys, "k", "CTRL|SHIFT|ALT", "Up")
