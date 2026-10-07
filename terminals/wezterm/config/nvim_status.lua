@@ -44,6 +44,7 @@ M.opts = {
 		["^V"] = { "V-BLOCK", "Fuchsia" },
 		["^S"] = { "SELECT", "Fuchsia" },
 		s = { "SELECT", "Fuchsia" },
+		S = { "S-LINE", "Fuchsia" },
 		R = { "REPLACE", "Red" },
 		c = { "COMMAND", "Yellow" },
 		t = { "TERMINAL", "Aqua" },

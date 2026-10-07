@@ -110,6 +110,7 @@ for _, proc in ipairs({ "/usr/bin/tmux", "C:\\Windows\\System32\\wsl.exe", "/usr
 	check("a wrapper counts as Neovim: " .. proc, ns.read(pane_object(live, proc)) ~= nil)
 end
 check("a plain shell does not (a Neovim that died without clearing)", ns.read(pane_object(live, "C:\\pwsh.exe")) == nil)
+check("the same on the tab-title path (a PaneInformation snapshot)", ns.read(pane_info(live, "C:\\pwsh.exe")) == nil)
 check("is_nvim sees a wrapper too", ns.is_nvim(pane_object(live, "/usr/bin/tmux")) == true)
 check("is_nvim works on a snapshot", ns.is_nvim(pane_info(live, "nvim")) == true)
 
@@ -138,6 +139,7 @@ check("no^V -> OP-PEND", chip("no^V") == "OP-PEND", chip("no^V"))
 check("ntT -> TERM-N", chip("ntT") == "TERM-N", chip("ntT"))
 check("niI -> NORMAL", chip("niI") == "NORMAL", chip("niI"))
 check("Vs -> V-LINE", chip("Vs") == "V-LINE", chip("Vs"))
+check("S -> S-LINE", chip("S") == "S-LINE", chip("S"))
 
 -- Free text: cut at a character boundary, invalid UTF-8 shows nothing.
 -- One ASCII byte in front: the 120-byte limit then falls INSIDE a 3-byte character (without it
