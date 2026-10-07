@@ -31,7 +31,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 CONF="${TMUX_CONF:-$HERE/../tmux.conf}"
 WORK="$(mktemp -d)"
 SOCKETS=()
-trap 'for s in "${SOCKETS[@]}"; do tmux -L "$s" kill-server 2>/dev/null; done; rm -rf "$WORK"' EXIT
+trap 'for s in "${SOCKETS[@]}"; do tmux -S "$s" kill-server 2>/dev/null; done; rm -rf "$WORK"' EXIT
 
 failed=0
 check() {
@@ -63,29 +63,46 @@ for name in nvim vim vi view nano vite vix less; do
   ln -s "$SLEEP" "$WORK/bin/$name"
 done
 
+# wait_command <socket> <window> <command> -- until the pane runs <command> (right after the fork its
+# pane_current_command is still `tmux` or the shell; on a busy or single-core machine that lasts
+# long enough to fail a check that has nothing to do with the file). Up to 5 s.
+wait_command() {
+  local i
+  for i in $(seq 1 50); do
+    [ "$(tmux -S "$1" display -p -t "t:$2" '#{pane_current_command}' 2>/dev/null)" = "$3" ] && return 0
+    sleep 0.1
+  done
+  return 1
+}
+
 # start <socket> <fake_theme> -- an empty server with a first window, then the file via source-file
 # (its output is what tmux says about every line). $NVIM is in the server's environment, like a
 # server that was started from a Neovim terminal.
 start() {
-  local socket="$1" theme="$2"
-  SOCKETS+=("$socket")
-  NVIM=/tmp/confcheck-dead.sock FAKE_THEME="$theme" tmux -L "$socket" -f /dev/null \
+  local socket="$1" theme="$2" name
+  NVIM=/tmp/confcheck-dead.sock FAKE_THEME="$theme" tmux -S "$socket" -f /dev/null \
     new-session -d -s t -n nano "$WORK/bin/nano 60"
   for name in nvim vim vi view vite vix less; do
-    tmux -L "$socket" new-window -d -n "$name" "$WORK/bin/$name 60"
+    tmux -S "$socket" new-window -d -n "$name" "$WORK/bin/$name 60"
   done
-  FAKE_THEME="$theme" tmux -L "$socket" source-file "$CONF" 2>&1
+  # an editor pane that never ran terminal.nvim: no @terminal_* options on it
+  tmux -S "$socket" new-window -d -n novars "$WORK/bin/vim 60"
+  for name in nano nvim vim vi view vite vix less; do
+    wait_command "$socket" "$name" "$name" || echo "pane $name did not start" >&2
+  done
+  wait_command "$socket" novars vim || echo "pane novars did not start" >&2
+  FAKE_THEME="$theme" tmux -S "$socket" source-file "$CONF" 2>&1
 }
 
 # --- the check itself: broken files must be reported -------------------------------------------
 broken_is_reported() {
   local body="$1" file="$WORK/broken.conf" out
   printf '%s\n' "$body" >"$file"
-  SOCKETS+=("confcheck-broken")
-  tmux -L confcheck-broken kill-server 2>/dev/null
-  tmux -L confcheck-broken -f /dev/null new-session -d -s b "$SLEEP 30"
-  out="$(tmux -L confcheck-broken source-file "$file" 2>&1)"
-  tmux -L confcheck-broken kill-server 2>/dev/null
+  local socket="$WORK/broken.sock"
+  SOCKETS+=("$socket")
+  tmux -S "$socket" -f /dev/null new-session -d -s b "$SLEEP 30"
+  out="$(tmux -S "$socket" source-file "$file" 2>&1)"
+  tmux -S "$socket" kill-server 2>/dev/null
   [ -n "$out" ]
 }
 check "self-test: an unknown option is reported (TMUX_FZF_LAUNCH_KEY)" broken_is_reported "set -g TMUX_FZF_LAUNCH_KEY 'C-f'"
@@ -94,50 +111,67 @@ check "self-test: an unknown value is reported (status-keys nonsense)" broken_is
 
 # --- the file, once without and once with a theme that replaces status-right -------------------
 suite() {
-  local label="$1" theme="$2" socket="confcheck-$$-$1" out
+  local label="$1" theme="$2" socket="$WORK/$1.sock" out
+  SOCKETS+=("$socket") # registered HERE: `start` runs in a subshell, an array change there is lost
+  rm -f "$WORK/tpm.log" # one count per suite
   out="$(start "$socket" "$theme")"
   loaded() { [ -z "$out" ]; }
   check "[$label] the file loads without a single message ($out)" loaded
 
-  local runs expected=1
-  [ "$label" != plain ] && expected=2
+  local runs
   runs="$(wc -l <"$WORK/tpm.log" 2>/dev/null || echo 0)"
-  check "[$label] TPM has run exactly once for this file (log: $runs)" test "$runs" -eq "$expected"
+  check "[$label] TPM has run exactly once for this file (log: $runs)" test "$runs" -eq 1
 
   local nvim_env
-  nvim_env="$(tmux -L "$socket" show-environment -g NVIM 2>&1)"
+  nvim_env="$(tmux -S "$socket" show-environment -g NVIM 2>&1)"
   no_nvim() { case "$nvim_env" in "-NVIM" | "unknown variable"*) return 0 ;; *) return 1 ;; esac; }
   check "[$label] \$NVIM is not in the server's environment ($nvim_env)" no_nvim
 
-  check "[$label] allow-passthrough is on" test "$(tmux -L "$socket" show -gv allow-passthrough)" = "on"
+  check "[$label] allow-passthrough is on" test "$(tmux -S "$socket" show -gv allow-passthrough)" = "on"
 
   local format
-  format="$(tmux -L "$socket" show -gv status-right)"
+  format="$(tmux -S "$socket" show -gv status-right)"
   segment() {
     # segment <window name>: status-right of that window's pane, with terminal.nvim's options set
     local pane
-    pane="$(tmux -L "$socket" list-panes -t "t:$1" -F '#{pane_id}' | head -1)"
+    pane="$(tmux -S "$socket" list-panes -t "t:$1" -F '#{pane_id}' | head -1)"
     [ -n "$pane" ] || return 1
-    tmux -L "$socket" set-option -p -t "$pane" @terminal_mode n
-    tmux -L "$socket" set-option -p -t "$pane" @terminal_branch main
-    tmux -L "$socket" display -p -t "$pane" "$format"
+    tmux -S "$socket" set-option -p -t "$pane" @terminal_mode n
+    tmux -S "$socket" set-option -p -t "$pane" @terminal_branch main
+    tmux -S "$socket" display -p -t "$pane" "$format"
   }
   shown() { local text; text="$(segment "$1")" && printf '%s' "$text" | grep -q 'n main'; }
   hidden() { local text; text="$(segment "$1")" && [ -n "$text" ] && ! printf '%s' "$text" | grep -q 'n main'; }
   for editor in nvim vim vi view; do
     check "[$label] status-right shows the segment for a pane running $editor" shown "$editor"
   done
+  # an editor pane that holds no @terminal_* options shows nothing (not even the " | " separator)
+  bare() {
+    local text
+    text="$(tmux -S "$socket" display -p -t t:novars "$format")" && [ -n "$text" ] && ! printf '%s' "$text" | grep -q '|'
+  }
+  check "[$label] status-right is empty in an editor pane without terminal.nvim options" bare
+  once() { [ "$(printf '%s' "$format" | grep -o '#{E:@terminal_status_segment}' | wc -l)" -eq 1 ]; }
+  check "[$label] status-right references the segment exactly once" once
   for other in nano vite vix less; do
     check "[$label] status-right hides a stale segment in a pane running $other" hidden "$other"
   done
   if [ "$theme" = 1 ]; then
     themed() { printf '%s' "$(segment nvim)" | grep -q 'THEME-RIGHT'; }
-    check "[$label] the theme's own status-right is kept behind the segment" themed
+    check "[$label] the theme's own status-right is kept" themed
+    in_front() { [ "$format" = '#{E:@terminal_status_segment}THEME-RIGHT' ]; }
+    check "[$label] the segment sits IN FRONT of the theme's status-right ($format)" in_front
   fi
+  # a reload (the file sourced a second time) leaves status-right as it was
+  reloaded() {
+    local again
+    FAKE_THEME="$theme" tmux -S "$socket" source-file "$CONF" >/dev/null 2>&1
+    again="$(tmux -S "$socket" show -gv status-right)"
+    [ "$again" = "$format" ]
+  }
+  check "[$label] sourcing the file again changes nothing (no second copy of the segment)" reloaded
 }
-rm -f "$WORK/tpm.log"
 suite plain 0
-# the second file load goes into a fresh server; tpm.log accumulates (1 + 1)
 suite theme 1
 
 echo "$([ "$failed" -eq 0 ] && echo 'RESULT ok' || echo 'RESULT failed')"
