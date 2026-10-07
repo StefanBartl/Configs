@@ -29,15 +29,20 @@ M.opts = {
 	-- Also require that the pane's foreground process looks like Neovim. Catches a Neovim that
 	-- died without clearing its variables (the user vars would otherwise stay forever).
 	require_nvim_process = true,
-	-- Names the foreground process may have (lowercase, substring match).
-	process_names = { "nvim" },
+	-- Names the foreground process may have (lowercase, substring match). A Neovim inside tmux, over
+	-- ssh or in WSL is not the pane's foreground process: tmux / ssh / wsl.exe is, so they count
+	-- (with `allow-passthrough on` the status of a Neovim inside tmux reaches this config).
+	process_names = { "nvim", "tmux", "ssh", "wsl", "mosh" },
 	-- Mode code (first letters of Neovim's mode) -> label and ANSI colour for the right status.
 	modes = {
 		n = { "NORMAL", "Blue" },
 		i = { "INSERT", "Green" },
 		v = { "VISUAL", "Fuchsia" },
 		V = { "V-LINE", "Fuchsia" },
-		["\22"] = { "V-BLOCK", "Fuchsia" },
+		-- terminal.nvim spells the control-character modes out: CTRL-V -> "^V", CTRL-S -> "^S"
+		-- (a prefix match: "^Vs" is Visual-block started from Select).
+		["^V"] = { "V-BLOCK", "Fuchsia" },
+		["^S"] = { "SELECT", "Fuchsia" },
 		s = { "SELECT", "Fuchsia" },
 		R = { "REPLACE", "Red" },
 		c = { "COMMAND", "Yellow" },
@@ -70,10 +75,46 @@ local function clean(s, max)
 		return ""
 	end
 	s = s:gsub("[%z\1-\31\127]", "?")
+	-- Not valid UTF-8 (a foreign writer, a cut in the middle of a character): show nothing rather
+	-- than hand the renderer bytes it cannot take.
+	if type(utf8) == "table" and utf8.len(s) == nil then
+		return ""
+	end
 	if #s > max then
-		s = s:sub(1, max)
+		-- Cut at a character boundary: step back over continuation bytes (10xxxxxx).
+		local cut = max
+		while cut > 0 do
+			local b = s:byte(cut + 1)
+			if b and b >= 0x80 and b < 0xC0 then
+				cut = cut - 1
+			else
+				break
+			end
+		end
+		s = s:sub(1, cut)
 	end
 	return s
+end
+
+--- The user variables of a pane. A `Pane` (update-status, key callbacks) has `get_user_vars()`;
+--- `format-tab-title` hands over a `PaneInformation` snapshot instead, which has no methods but a
+--- `user_vars` field. Both are read, so the tab title works as well as the right status.
+---@param pane any
+---@return table|nil
+local function user_vars(pane)
+	local ok, vars = pcall(function()
+		return pane:get_user_vars()
+	end)
+	if ok and type(vars) == "table" then
+		return vars
+	end
+	local field_ok, field = pcall(function()
+		return pane.user_vars
+	end)
+	if field_ok and type(field) == "table" then
+		return field
+	end
+	return nil
 end
 
 ---@param n any
@@ -92,6 +133,13 @@ local function process_is_nvim(pane)
 	local ok, name = pcall(function()
 		return pane:get_foreground_process_name()
 	end)
+	if not (ok and type(name) == "string" and name ~= "") then
+		-- A PaneInformation snapshot carries the name as a field.
+		local field_ok, field = pcall(function()
+			return pane.foreground_process_name
+		end)
+		ok, name = field_ok, field
+	end
 	if not ok or type(name) ~= "string" or name == "" then
 		-- Unknown (remote domain, no permission): do not hide a status that may be right.
 		return true
@@ -109,10 +157,8 @@ end
 ---@param pane any
 ---@return table|nil
 function M.read(pane)
-	local ok, vars = pcall(function()
-		return pane:get_user_vars()
-	end)
-	if not ok or type(vars) ~= "table" then
+	local vars = user_vars(pane)
+	if vars == nil then
 		return nil
 	end
 	if vars.MUX_NVIM ~= "1" then
@@ -151,10 +197,8 @@ end
 ---@param pane any
 ---@return boolean
 function M.is_nvim(pane)
-	local ok, vars = pcall(function()
-		return pane:get_user_vars()
-	end)
-	return ok and type(vars) == "table" and vars.MUX_NVIM == "1" and process_is_nvim(pane)
+	local vars = user_vars(pane)
+	return vars ~= nil and vars.MUX_NVIM == "1" and process_is_nvim(pane)
 end
 
 --- The text for a tab title: file name, a `+` when modified, error/warning counts.
@@ -178,7 +222,10 @@ end
 ---@return string label
 ---@return string color
 local function mode_chip(mode)
-	local m = M.opts.modes[mode] or M.opts.modes[mode:sub(1, 1)]
+	-- Exact code first, then a two-character prefix (`no`, `nov`, `noV`, `no^V` are operator-pending;
+	-- `nt`, `ntT` terminal-normal; `^Vs`), then the first character (`niI` -> `n`, `Vs` -> `V`).
+	local modes = M.opts.modes
+	local m = modes[mode] or modes[mode:sub(1, 2)] or modes[mode:sub(1, 1)]
 	if m then
 		return m[1], m[2]
 	end

@@ -106,7 +106,10 @@ return function(Config)
 				key = key,
 				mods = NAVIGATION.mods,
 				action = wezterm.action_callback(function(window, pane)
-					if nvim_status.is_nvim(pane) or NAVIGATION.shell_panes ~= "navigate" then
+					-- With `shell_panes = "send"` (the default) both branches would do the same, so the pane
+					-- is not even looked at: `is_nvim` reads user vars and asks the OS for the pane's
+					-- foreground process, on the GUI thread, on every key repeat.
+					if NAVIGATION.shell_panes ~= "navigate" or nvim_status.is_nvim(pane) then
 						window:perform_action(act.SendKey({ key = key, mods = NAVIGATION.mods }), pane)
 					else
 						window:perform_action(act.ActivatePaneDirection(direction), pane)
