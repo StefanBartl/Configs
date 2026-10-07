@@ -140,7 +140,9 @@ check("niI -> NORMAL", chip("niI") == "NORMAL", chip("niI"))
 check("Vs -> V-LINE", chip("Vs") == "V-LINE", chip("Vs"))
 
 -- Free text: cut at a character boundary, invalid UTF-8 shows nothing.
-local euro = string.rep("\226\130\172", 100) -- 300 bytes, 100 characters
+-- One ASCII byte in front: the 120-byte limit then falls INSIDE a 3-byte character (without it
+-- the limit is a multiple of 3 and the cut is on a boundary whatever the code does).
+local euro = "a" .. string.rep("\226\130\172", 100)
 local cut = ns.read(pane_object({ MUX_NVIM = "1", MUX_STATUS = dataset({ file = euro }) }, "nvim"))
 check(
 	"an overlong name is cut without splitting a character",
