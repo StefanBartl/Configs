@@ -17,6 +17,10 @@ local NAVIGATION = {
 	mods = "CTRL",
 	keys = { h = "Left", j = "Down", k = "Up" },
 	shell_panes = "send", -- "send" | "navigate"
+	-- Always-on way out of any pane (also a shell pane and for <l>): moves WezTerm's pane focus and never
+	-- sends the key on. `false` removes it.
+	escape_mods = "CTRL|ALT",
+	escape_keys = { h = "Left", j = "Down", k = "Up", l = "Right" },
 }
 
 -- local function bind(keys, key, mods, dir)
@@ -115,6 +119,16 @@ return function(Config)
 						window:perform_action(act.ActivatePaneDirection(direction), pane)
 					end
 				end),
+			}
+		end
+	end
+
+	if NAVIGATION.enabled and NAVIGATION.escape_mods then
+		for key, direction in pairs(NAVIGATION.escape_keys) do
+			Config.keys[#Config.keys + 1] = {
+				key = key,
+				mods = NAVIGATION.escape_mods,
+				action = act.ActivatePaneDirection(direction),
 			}
 		end
 	end

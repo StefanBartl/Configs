@@ -66,3 +66,7 @@ edge, asks WezTerm itself (`wezterm cli activate-pane-direction`, see terminal.n
 keys move between WezTerm panes there too, like vim-tmux-navigator, at the price of those
 shell bindings. `NAVIGATION.enabled = false` removes the bindings.
 
+To get back from a shell pane into a Neovim pane without giving up those shell keys, `Ctrl+Alt+h/j/k/l`
+(`NAVIGATION.escape_mods` / `escape_keys`, `escape_mods = false` removes them) always move WezTerm's pane
+focus, in any pane and including right (`l`).
+
