@@ -70,3 +70,15 @@ To get back from a shell pane into a Neovim pane without giving up those shell k
 (`NAVIGATION.escape_mods` / `escape_keys`, `escape_mods = false` removes them) always move WezTerm's pane
 focus, in any pane and including right (`l`).
 
+
+## Stale variables and cost
+
+A Neovim that dies without clearing `MUX_NVIM` leaves its user variables behind. They are not
+shown for long: `require_nvim_process` (default on) also requires the pane's foreground process to
+look like Neovim (`process_names`; tmux, ssh, wsl and mosh count too), so the status disappears as
+soon as the shell is back in front. The dataset carries no timestamp on purpose: the process check
+needs no clock and no extra state.
+
+Cost per event: `tests/nvim_status_check.lua` times `read` plus `right_status` (about 5 us on LuaJIT
+in a headless Neovim; budget 200 us). The call to `get_foreground_process_name` is the only part that
+leaves Lua; it is made once per pane and event.
