@@ -156,5 +156,18 @@ check("invalid UTF-8 shows nothing for that field", broken and broken.file == ""
 local ctl = ns.read(pane_object({ MUX_NVIM = "1", MUX_STATUS = dataset({ file = "x\27[31my" }) }, "nvim"))
 check("control characters become ?", ctl and ctl.file == "x?[31my", ctl and ctl.file)
 
+-- Cost per event: update-right-status runs about once a second per window, so a read plus the
+-- formatting must stay far below a millisecond. The budget is generous (CI noise); the printed
+-- figure is the measurement.
+local perf_pane = pane_object({ MUX_NVIM = "1", MUX_STATUS = dataset() }, "nvim")
+local rounds = 20000
+local t0 = vim.uv.hrtime()
+for _ = 1, rounds do
+	ns.right_status(ns.read(perf_pane))
+end
+local per_call_us = (vim.uv.hrtime() - t0) / rounds / 1000
+print(string.format("info read+right_status: %.2f us per call", per_call_us))
+check("read + right_status stays under 200 us per event", per_call_us < 200, per_call_us)
+
 print(failed and "RESULT failed" or "RESULT ok")
 os.exit(failed and 1 or 0)
