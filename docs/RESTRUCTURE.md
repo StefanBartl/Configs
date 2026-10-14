@@ -416,7 +416,7 @@ kopiert.
 ## 8. Schritt 7 durchgeführt (2026-08-20): Regeln & Gates
 
 Die Checklisten- und Gate-Systematik aus
-`WKDBooks/Development/wkdbook-Lua/Checklists` ist auf dieses Repo übertragen —
+`rules-vault/rulesets/lua` ist auf dieses Repo übertragen —
 nach [`docs/checklisten/`](./checklisten/).
 
 ### Übertragen, nicht kopiert

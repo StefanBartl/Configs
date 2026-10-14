@@ -1,7 +1,7 @@
 # Regeln & Checklisten — Dotfiles
 
 Übertragung der Systematik aus
-`WKDBooks/Development/wkdbook-Lua/Checklists` auf dieses Repo.
+`rules-vault/rulesets/lua` auf dieses Repo.
 
 **Was hier steht und was nicht.** Die dortige Sammlung ist die kanonische
 Fassung für **Lua- und Neovim-Code**. Dieses Repo ist etwas anderes: Dotfiles,
