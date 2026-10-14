@@ -4,7 +4,7 @@ Jede Regel steht hier **genau einmal** in Kurzform. Vollständige Fassung und
 Beleg stehen in [`regeln/`](../regeln/).
 
 Betrifft der Change Lua-Code (`terminals/wezterm/**`), zusätzlich die
-kanonische Sammlung: `WKDBooks/Development/wkdbook-Lua/Checklists/gates/REVIEW.md`,
+kanonische Sammlung: `rules-vault/rulesets/lua/gates/REVIEW.md`,
 Abschnitte Code-Stil, Annotationen, Fehlerbehandlung, Sicherheit.
 
 ---
