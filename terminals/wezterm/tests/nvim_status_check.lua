@@ -156,9 +156,10 @@ check("invalid UTF-8 shows nothing for that field", broken and broken.file == ""
 local ctl = ns.read(pane_object({ MUX_NVIM = "1", MUX_STATUS = dataset({ file = "x\27[31my" }) }, "nvim"))
 check("control characters become ?", ctl and ctl.file == "x?[31my", ctl and ctl.file)
 
--- Cost per event: update-right-status runs about once a second per window, so a read plus the
--- formatting must stay far below a millisecond. The budget is generous (CI noise); the printed
--- figure is the measurement.
+-- Cost per event of THIS module's Lua code: update-right-status runs about once a second per window,
+-- so a read plus the formatting must stay far below a millisecond. The budget is generous (CI
+-- noise); the printed figure is the measurement. Not measured: get_user_vars, wezterm.json_parse and
+-- the process lookup behind get_foreground_process_name -- WezTerm provides those, here they are stubs.
 local perf_pane = pane_object({ MUX_NVIM = "1", MUX_STATUS = dataset() }, "nvim")
 local rounds = 20000
 local t0 = vim.uv.hrtime()

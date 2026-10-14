@@ -73,12 +73,20 @@ focus, in any pane and including right (`l`).
 
 ## Stale variables and cost
 
-A Neovim that dies without clearing `MUX_NVIM` leaves its user variables behind. They are not
-shown for long: `require_nvim_process` (default on) also requires the pane's foreground process to
-look like Neovim (`process_names`; tmux, ssh, wsl and mosh count too), so the status disappears as
-soon as the shell is back in front. The dataset carries no timestamp on purpose: the process check
-needs no clock and no extra state.
+A Neovim that dies without clearing `MUX_NVIM` leaves its user variables behind. `require_nvim_process`
+(default on) also requires the pane's foreground process to look like Neovim (`process_names`), so in a
+**local pane whose foreground process is the shell** the status is gone as soon as the shell is back in
+front. That is all this check can do, and it has two limits:
 
-Cost per event: `tests/nvim_status_check.lua` times `read` plus `right_status` (about 5 us on LuaJIT
-in a headless Neovim; budget 200 us). The call to `get_foreground_process_name` is the only part that
-leaves Lua; it is made once per pane and event.
+- A pane whose foreground process is a **wrapper** that `process_names` accepts (`tmux`, `ssh`, `mosh`,
+  `wsl.exe`, so every `WSL:*` domain) keeps that wrapper in front after a Neovim inside it died. The
+  stale status stays until another Neovim runs in the pane. The same goes for a pane whose process name
+  cannot be read (remote domains, no permission): the status is not hidden, because it may be right.
+- The dataset carries no timestamp (it is only sent on change, so its age says nothing), and a pid
+  inside a wrapper cannot be checked from WezTerm.
+
+Cost per event: `tests/nvim_status_check.lua` times the pure-Lua part, `read` plus `right_status`, with
+the pane stubbed (about 5 us on LuaJIT in a headless Neovim; budget 200 us). That catches a regression in
+this module's own code. It does **not** measure what WezTerm adds per event and pane: `get_user_vars()`
+and `wezterm.json_parse` (both Rust) and the operating system's lookup behind
+`get_foreground_process_name`, which is likely the largest part.
